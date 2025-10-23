@@ -17,6 +17,7 @@ import Pricing from "@/pages/Pricing";
 import Checkout from "@/pages/Checkout";
 import AdminPanel from "@/pages/AdminPanel";
 import Settings from "@/pages/Settings";
+import Profile from "@/pages/Profile";
 import RoleSelection from "@/pages/RoleSelection";
 
 function Router() {
@@ -49,6 +50,7 @@ function Router() {
       
       {/* User routes */}
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/profile" component={Profile} />
       <Route path="/settings" component={Settings} />
       
       {/* Employer routes */}
