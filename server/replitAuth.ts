@@ -79,7 +79,7 @@ export async function setupReplitAuth(app: Express) {
             firstName: (claims.given_name as string) || (claims.name as string)?.split(' ')[0],
             lastName: (claims.family_name as string) || (claims.name as string)?.split(' ').slice(1).join(' '),
             profileImageUrl: claims.picture as string || null,
-            role: 'talent', // Default role
+            role: 'guest', // Require role selection
           })
           .returning();
       }
@@ -114,6 +114,42 @@ export async function setupReplitAuth(app: Express) {
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
+
+    res.json(user);
+  });
+
+  // Select role (first-time onboarding only)
+  app.post('/api/auth/select-role', async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    // Get current user
+    const [currentUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, req.session.userId));
+
+    if (!currentUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Only allow role selection for users with 'guest' role (first-time onboarding)
+    if (currentUser.role !== 'guest') {
+      return res.status(403).json({ error: 'Role already set. Please contact support to change your role.' });
+    }
+
+    const { role } = req.body;
+
+    if (!['talent', 'employer', 'recruiter'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role' });
+    }
+
+    const [user] = await db
+      .update(users)
+      .set({ role })
+      .where(eq(users.id, req.session.userId))
+      .returning();
 
     res.json(user);
   });
