@@ -41,10 +41,7 @@ export default function RoleSelection() {
 
     setIsLoading(true);
     try {
-      await apiRequest("/api/auth/select-role", {
-        method: "POST",
-        body: JSON.stringify({ role: selectedRole }),
-      });
+      await apiRequest("POST", "/api/auth/select-role", { role: selectedRole });
 
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
 
