@@ -11,10 +11,31 @@ import {
 import { Briefcase, Building2, User, LogOut, Settings, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { getInitials } from "@/lib/utils";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export function Navbar() {
   const { user, isAuthenticated } = useAuth();
   const [location] = useLocation();
+  const { toast } = useToast();
+
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/auth/logout");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({ title: "Signed out" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Logout failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -45,9 +66,14 @@ export function Navbar() {
 
           <div className="flex items-center gap-4">
             {!isAuthenticated ? (
-              <Button asChild data-testid="button-login">
-                <a href="/api/login">Sign In</a>
-              </Button>
+              <>
+                <Button variant="ghost" asChild data-testid="button-login">
+                  <Link href="/login">Sign In</Link>
+                </Button>
+                <Button asChild data-testid="button-register">
+                  <Link href="/register">Sign Up</Link>
+                </Button>
+              </>
             ) : (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -103,11 +129,18 @@ export function Navbar() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <a href="/api/logout" className="flex items-center w-full" data-testid="link-logout">
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>Log out</span>
-                    </a>
+                  <DropdownMenuItem
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      if (!logoutMutation.isPending) {
+                        logoutMutation.mutate();
+                      }
+                    }}
+                    data-testid="link-logout"
+                    className="flex items-center w-full"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>{logoutMutation.isPending ? "Signing out..." : "Log out"}</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

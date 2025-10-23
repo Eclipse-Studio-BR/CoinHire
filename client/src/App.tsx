@@ -19,6 +19,8 @@ import AdminPanel from "@/pages/AdminPanel";
 import Settings from "@/pages/Settings";
 import Profile from "@/pages/Profile";
 import RoleSelection from "@/pages/RoleSelection";
+import Login from "@/pages/Login";
+import Register from "@/pages/Register";
 
 function Router() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -34,6 +36,8 @@ function Router() {
     <Switch>
       {/* Role selection (for new users) */}
       <Route path="/select-role" component={RoleSelection} />
+      <Route path="/login" component={Login} />
+      <Route path="/register" component={Register} />
       
       {/* Home route - authenticated users see Jobs, others see Landing */}
       <Route path="/">

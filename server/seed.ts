@@ -1,6 +1,12 @@
 import { db } from "./db";
 import { users, companies, jobs, plans } from "@shared/schema";
-import { randomUUID } from "crypto";
+import { randomUUID, randomBytes, scryptSync } from "crypto";
+
+function seedPassword(password: string): string {
+  const salt = randomBytes(16).toString("hex");
+  const derivedKey = scryptSync(password, salt, 64);
+  return `${salt}:${derivedKey.toString("hex")}`;
+}
 
 async function seed() {
   console.log("🌱 Seeding database...");
@@ -10,6 +16,8 @@ async function seed() {
     {
       id: randomUUID(),
       email: "admin@web3jobs.com",
+      username: "admin",
+      passwordHash: seedPassword("AdminPass123"),
       firstName: "Admin",
       lastName: "User",
       role: "admin" as const,
@@ -18,6 +26,8 @@ async function seed() {
     {
       id: randomUUID(),
       email: "employer@defi.com",
+      username: "employer",
+      passwordHash: seedPassword("Employer123"),
       firstName: "John",
       lastName: "Employer",
       role: "employer" as const,
@@ -26,6 +36,8 @@ async function seed() {
     {
       id: randomUUID(),
       email: "talent@crypto.com",
+      username: "talent",
+      passwordHash: seedPassword("Talent123"),
       firstName: "Jane",
       lastName: "Developer",
       role: "talent" as const,

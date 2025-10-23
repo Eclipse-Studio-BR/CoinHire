@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { requireAuth, requireRole, setupReplitAuth } from "./replitAuth";
+import { registerAuth, requireAuth, requireRole } from "./auth";
 import { insertJobSchema, insertCompanySchema, insertApplicationSchema } from "@shared/schema";
 import { z } from "zod";
 import Stripe from "stripe";
@@ -19,8 +19,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Setup Replit Auth
-  await setupReplitAuth(app);
+  // Setup authentication routes
+  registerAuth(app);
 
   // ==================== Object Storage ====================
   // Based on blueprint:javascript_object_storage

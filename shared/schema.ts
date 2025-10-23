@@ -35,16 +35,25 @@ export const sessions = pgTable(
 );
 
 // Users table (required for Replit Auth, extended with role)
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
-  profileImageUrl: varchar("profile_image_url"),
-  role: userRoleEnum("role").default('talent').notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+export const users = pgTable(
+  "users",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    email: varchar("email", { length: 255 }).notNull().unique(),
+    username: varchar("username", { length: 50 }).unique(),
+    passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+    firstName: varchar("first_name"),
+    lastName: varchar("last_name"),
+    profileImageUrl: varchar("profile_image_url"),
+    role: userRoleEnum("role").default("guest").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("users_email_idx").on(table.email),
+    index("users_username_idx").on(table.username),
+  ],
+);
 
 // Companies table
 export const companies = pgTable("companies", {
@@ -307,6 +316,7 @@ export const insertCreditLedgerSchema = createInsertSchema(creditLedger).omit({ 
 
 // Inferred types
 export type User = typeof users.$inferSelect;
+export type PublicUser = Omit<User, "passwordHash">;
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 

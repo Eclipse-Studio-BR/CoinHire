@@ -121,15 +121,15 @@ export default function PostJob() {
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "Please sign in to post jobs.",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
+      toast({
+        title: "Unauthorized",
+        description: "Please sign in to post jobs.",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        setLocation("/login");
+      }, 500);
+      return;
       }
       toast({
         title: "Error",

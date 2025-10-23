@@ -126,10 +126,11 @@ shared/
 ## API Routes (To Be Implemented in Task 2)
 
 ### Authentication
-- `GET /api/login` - Initiate OAuth login
-- `GET /api/callback` - OAuth callback
-- `GET /api/logout` - Sign out
+- `POST /api/auth/register` - Create a new account with email/password
+- `POST /api/auth/login` - Sign in with email or username
+- `POST /api/auth/logout` - Sign out and destroy the current session
 - `GET /api/auth/user` - Get current user (protected)
+- `POST /api/auth/select-role` - Choose initial role after registration
 
 ### Jobs
 - `GET /api/jobs` - List jobs with filters
@@ -191,14 +192,12 @@ Following `design_guidelines.md`:
 - `SESSION_SECRET` - Session encryption key
 - `STRIPE_SECRET_KEY` - Stripe API secret key (sk_...)
 - `VITE_STRIPE_PUBLIC_KEY` - Stripe publishable key (pk_...)
-- `REPL_ID` - Replit application ID (auto-provided)
-- `REPLIT_DOMAINS` - Allowed domains for OAuth (auto-provided)
-- `DEFAULT_OBJECT_STORAGE_BUCKET_ID` - Object storage bucket ID (auto-provisioned)
-- `PUBLIC_OBJECT_SEARCH_PATHS` - Public asset directories (auto-provisioned)
-- `PRIVATE_OBJECT_DIR` - Private upload directory (auto-provisioned)
 
 ### Optional
-- `ISSUER_URL` - Custom OIDC issuer (defaults to Replit)
+- `STRIPE_WEBHOOK_SECRET` - Stripe webhook signing secret (required for webhook handling)
+- `PUBLIC_OBJECT_SEARCH_PATHS` - Public asset directories (for object storage uploads)
+- `PRIVATE_OBJECT_DIR` - Private upload directory (for object storage uploads)
+- `REPL_ID` - Set automatically in Replit deployments (used to adjust port binding)
 
 ## Development Commands
 

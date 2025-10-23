@@ -37,7 +37,7 @@ export default function Profile() {
                 Please sign in to view your profile.
               </p>
               <Button asChild data-testid="button-login">
-                <a href="/api/login">Sign In</a>
+                <Link href="/login">Sign In</Link>
               </Button>
             </CardContent>
           </Card>
