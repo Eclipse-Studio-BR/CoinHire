@@ -3,6 +3,7 @@ import { eq, and, desc, like, gte, lte, sql, or } from "drizzle-orm";
 import {
   users,
   companies,
+  companyMembers,
   jobs,
   applications,
   talentProfiles,
@@ -46,6 +47,8 @@ export interface IStorage {
   createCompany(company: InsertCompany): Promise<Company>;
   updateCompany(id: string, updates: Partial<InsertCompany>): Promise<Company | undefined>;
   approveCompany(id: string): Promise<Company | undefined>;
+  isCompanyMember(userId: string, companyId: string): Promise<boolean>;
+  getUserCompanyIds(userId: string): Promise<string[]>;
 
   // Jobs
   getJob(id: string): Promise<Job | undefined>;
@@ -179,6 +182,25 @@ export class DbStorage implements IStorage {
       .where(eq(companies.id, id))
       .returning();
     return company;
+  }
+
+  async isCompanyMember(userId: string, companyId: string): Promise<boolean> {
+    const [membership] = await db
+      .select()
+      .from(companyMembers)
+      .where(and(
+        eq(companyMembers.userId, userId),
+        eq(companyMembers.companyId, companyId)
+      ));
+    return !!membership;
+  }
+
+  async getUserCompanyIds(userId: string): Promise<string[]> {
+    const memberships = await db
+      .select({ companyId: companyMembers.companyId })
+      .from(companyMembers)
+      .where(eq(companyMembers.userId, userId));
+    return memberships.map(m => m.companyId);
   }
 
   // Jobs
@@ -480,7 +502,12 @@ export class DbStorage implements IStorage {
     }
 
     if (role === 'employer' || role === 'recruiter') {
-      const userJobs = await this.listJobs({ status: 'active' });
+      // Get company IDs user is a member of
+      const userCompanyIds = await this.getUserCompanyIds(userId);
+      
+      // Get all active jobs and filter by user's companies
+      const allJobs = await this.listJobs({ status: 'active' });
+      const userJobs = allJobs.filter(job => userCompanyIds.includes(job.companyId));
 
       const activeJobsCount = userJobs.length;
       const totalViews = userJobs.reduce((sum, job) => sum + job.viewCount, 0);

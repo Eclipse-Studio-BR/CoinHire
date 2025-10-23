@@ -22,18 +22,18 @@ export function Footer() {
             <h3 className="font-semibold mb-4">For Job Seekers</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link href="/jobs">
-                  <a className="hover:text-foreground transition-colors">Browse Jobs</a>
+                <Link href="/jobs" className="hover:text-foreground transition-colors">
+                  Browse Jobs
                 </Link>
               </li>
               <li>
-                <Link href="/companies">
-                  <a className="hover:text-foreground transition-colors">Companies</a>
+                <Link href="/companies" className="hover:text-foreground transition-colors">
+                  Companies
                 </Link>
               </li>
               <li>
-                <Link href="/profile">
-                  <a className="hover:text-foreground transition-colors">Create Profile</a>
+                <Link href="/profile" className="hover:text-foreground transition-colors">
+                  Create Profile
                 </Link>
               </li>
             </ul>
@@ -43,18 +43,18 @@ export function Footer() {
             <h3 className="font-semibold mb-4">For Employers</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link href="/post-job">
-                  <a className="hover:text-foreground transition-colors">Post a Job</a>
+                <Link href="/post-job" className="hover:text-foreground transition-colors">
+                  Post a Job
                 </Link>
               </li>
               <li>
-                <Link href="/pricing">
-                  <a className="hover:text-foreground transition-colors">Pricing</a>
+                <Link href="/pricing" className="hover:text-foreground transition-colors">
+                  Pricing
                 </Link>
               </li>
               <li>
-                <Link href="/dashboard">
-                  <a className="hover:text-foreground transition-colors">Employer Dashboard</a>
+                <Link href="/dashboard" className="hover:text-foreground transition-colors">
+                  Employer Dashboard
                 </Link>
               </li>
             </ul>

@@ -81,6 +81,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertJobSchema.parse(req.body);
 
+      // Check ownership: user must be a member of the company or admin
+      const isMember = await storage.isCompanyMember(req.session.userId!, validatedData.companyId);
+      const user = await storage.getUser(req.session.userId!);
+      
+      if (!isMember && user?.role !== 'admin') {
+        return res.status(403).json({ error: 'You do not have permission to post jobs for this company' });
+      }
+
       const job = await storage.createJob({
         ...validatedData,
         status: 'pending', // Requires admin approval
@@ -96,6 +104,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/jobs/:id/view', async (req: Request, res: Response) => {
     try {
       await storage.incrementJobView(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update job (employer only)
+  app.put('/api/jobs/:id', requireRole('employer', 'recruiter'), async (req: Request, res: Response) => {
+    try {
+      const job = await storage.getJob(req.params.id);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+
+      // Check ownership: user must be a member of the company that owns this job
+      const isMember = await storage.isCompanyMember(req.session.userId!, job.companyId);
+      const user = await storage.getUser(req.session.userId!);
+      
+      if (!isMember && user?.role !== 'admin') {
+        return res.status(403).json({ error: 'You do not have permission to update this job' });
+      }
+
+      // Only allow employers to update specific fields (not admin-controlled fields)
+      const employerUpdateSchema = insertJobSchema
+        .partial()
+        .omit({ companyId: true, status: true, tier: true, publishedAt: true, expiresAt: true });
+      
+      const validatedData = employerUpdateSchema.parse(req.body);
+
+      const updatedJob = await storage.updateJob(req.params.id, validatedData);
+      
+      res.json(updatedJob);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Delete job (employer only)
+  app.delete('/api/jobs/:id', requireRole('employer', 'recruiter', 'admin'), async (req: Request, res: Response) => {
+    try {
+      const job = await storage.getJob(req.params.id);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+
+      // Check ownership: user must be a member of the company or admin
+      const isMember = await storage.isCompanyMember(req.session.userId!, job.companyId);
+      const user = await storage.getUser(req.session.userId!);
+      
+      if (!isMember && user?.role !== 'admin') {
+        return res.status(403).json({ error: 'You do not have permission to delete this job' });
+      }
+      
+      // Mark as expired instead of actual delete to preserve data integrity
+      await storage.expireJob(req.params.id);
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -127,6 +190,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         resumeUrl: req.body.resumeUrl,
         status: 'submitted',
       });
+
+      // Increment application count
+      await storage.incrementJobApply(req.params.id);
 
       res.status(201).json(application);
     } catch (error: any) {
@@ -190,13 +256,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update company (employer only)
+  app.put('/api/companies/:id', requireRole('employer', 'recruiter'), async (req: Request, res: Response) => {
+    try {
+      // Check ownership: user must be a member of the company or admin
+      const isMember = await storage.isCompanyMember(req.session.userId!, req.params.id);
+      const user = await storage.getUser(req.session.userId!);
+      
+      if (!isMember && user?.role !== 'admin') {
+        return res.status(403).json({ error: 'You do not have permission to update this company' });
+      }
+
+      // Only allow employers to update specific fields (not admin-controlled fields)
+      const employerUpdateSchema = insertCompanySchema
+        .partial()
+        .omit({ isApproved: true });
+      
+      const validatedData = employerUpdateSchema.parse(req.body);
+      const company = await storage.updateCompany(req.params.id, validatedData);
+      
+      if (!company) {
+        return res.status(404).json({ error: 'Company not found' });
+      }
+      
+      res.json(company);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   // Get employer's companies
   app.get('/api/employer/companies', requireRole('employer', 'recruiter'), async (req: Request, res: Response) => {
     try {
-      // In a full implementation, we'd track company ownership via company_members table
-      // For now, return all approved companies
+      // Get company IDs user is a member of
+      const userCompanyIds = await storage.getUserCompanyIds(req.session.userId!);
+      
+      // Get full company data for user's companies
       const companiesList = await storage.listCompanies({ isApproved: true });
-      res.json(companiesList);
+      const userCompanies = companiesList.filter(c => userCompanyIds.includes(c.id));
+      
+      res.json(userCompanies);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get employer's jobs with applications
+  app.get('/api/employer/jobs', requireRole('employer', 'recruiter'), async (req: Request, res: Response) => {
+    try {
+      // Get company IDs user is a member of
+      const userCompanyIds = await storage.getUserCompanyIds(req.session.userId!);
+      
+      if (userCompanyIds.length === 0) {
+        return res.json([]);
+      }
+      
+      // Get all jobs from user's companies
+      const jobsList = await storage.listJobs({});
+      const userJobs = jobsList.filter(job => userCompanyIds.includes(job.companyId));
+      
+      // Enrich with company and application data
+      const jobsWithData = await Promise.all(
+        userJobs.map(async (job) => {
+          const company = await storage.getCompany(job.companyId);
+          const applicationsList = await storage.listApplications({ jobId: job.id });
+          return { ...job, company, applicationsCount: applicationsList.length, applications: applicationsList };
+        })
+      );
+      
+      res.json(jobsWithData);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -226,6 +354,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(applicationsWithJobs);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update application status (employer/admin only)
+  app.put('/api/applications/:id', requireRole('employer', 'recruiter', 'admin'), async (req: Request, res: Response) => {
+    try {
+      // Validate input
+      const updateSchema = z.object({
+        status: z.enum(['submitted', 'reviewing', 'shortlisted', 'interview', 'offered', 'rejected', 'withdrawn']).optional(),
+        score: z.number().min(0).max(100).optional(),
+        notes: z.string().optional(),
+      });
+      
+      const validatedData = updateSchema.parse(req.body);
+      
+      // Get application and verify ownership
+      const existingApplication = await storage.getApplication(req.params.id);
+      if (!existingApplication) {
+        return res.status(404).json({ error: 'Application not found' });
+      }
+      
+      // Get the job to check company ownership
+      const job = await storage.getJob(existingApplication.jobId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+      
+      // Check that employer is a member of the company or is admin
+      const isMember = await storage.isCompanyMember(req.session.userId!, job.companyId);
+      const user = await storage.getUser(req.session.userId!);
+      
+      if (!isMember && user?.role !== 'admin') {
+        return res.status(403).json({ error: 'You do not have permission to update this application' });
+      }
+      
+      const application = await storage.updateApplication(req.params.id, validatedData);
+      
+      res.json(application);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
     }
   });
 
@@ -268,6 +436,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete saved job
+  app.delete('/api/saved-jobs/:jobId', requireAuth, async (req: Request, res: Response) => {
+    try {
+      await storage.deleteSavedJob(req.session.userId!, req.params.jobId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ==================== Saved Searches ====================
+
+  // Get saved searches
+  app.get('/api/saved-searches', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const savedSearches = await storage.getSavedSearches(req.session.userId!);
+      res.json(savedSearches);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create saved search
+  app.post('/api/saved-searches', requireAuth, async (req: Request, res: Response) => {
+    try {
+      // Validate input
+      const savedSearchSchema = z.object({
+        name: z.string().min(1).max(255),
+        filters: z.record(z.any()),
+        alertFrequency: z.enum(['daily', 'weekly']).optional(),
+      });
+      
+      const validatedData = savedSearchSchema.parse(req.body);
+      
+      const savedSearch = await storage.createSavedSearch({
+        userId: req.session.userId!,
+        name: validatedData.name,
+        filters: JSON.stringify(validatedData.filters),
+        alertFrequency: validatedData.alertFrequency,
+      });
+
+      res.status(201).json(savedSearch);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Delete saved search
+  app.delete('/api/saved-searches/:id', requireAuth, async (req: Request, res: Response) => {
+    try {
+      await storage.deleteSavedSearch(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ==================== Dashboard ====================
 
   // Get dashboard stats
@@ -280,18 +505,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const stats = await storage.getDashboardStats(user.id, user.role);
       res.json(stats);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Get employer's jobs
-  app.get('/api/employer/jobs', requireRole('employer', 'recruiter'), async (req: Request, res: Response) => {
-    try {
-      // In a full implementation, we'd filter by company membership
-      // For now, return all jobs
-      const jobsList = await storage.listJobs({});
-      res.json(jobsList);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
