@@ -47,7 +47,7 @@ export default function JobDetail() {
   const { toast } = useToast();
 
   const { data: job, isLoading } = useQuery<JobWithCompany>({
-    queryKey: ["/api/jobs", id],
+    queryKey: [`/api/jobs/${id}`],
   });
 
   const incrementViewMutation = useMutation({
@@ -71,7 +71,7 @@ export default function JobDetail() {
         title: "Application Submitted",
         description: "Your application has been sent to the employer.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs", id] });
+      queryClient.invalidateQueries({ queryKey: [`/api/jobs/${id}`] });
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {

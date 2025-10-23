@@ -77,7 +77,7 @@ export default function Checkout() {
   const [clientSecret, setClientSecret] = useState("");
 
   const { data: plan } = useQuery<Plan>({
-    queryKey: ["/api/plans", planId],
+    queryKey: [`/api/plans/${planId}`],
     enabled: !!planId,
   });
 

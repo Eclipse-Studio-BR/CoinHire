@@ -29,7 +29,28 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
+    // First element is the URL path, rest could be params
+    const [url, ...params] = queryKey;
+    
+    // Build URL with query parameters if they exist
+    let fetchUrl = url as string;
+    if (params.length > 0 && typeof params[0] === 'object') {
+      const searchParams = new URLSearchParams();
+      const paramsObj = params[0] as Record<string, any>;
+      
+      Object.entries(paramsObj).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          searchParams.append(key, String(value));
+        }
+      });
+      
+      const queryString = searchParams.toString();
+      if (queryString) {
+        fetchUrl += `?${queryString}`;
+      }
+    }
+    
+    const res = await fetch(fetchUrl, {
       credentials: "include",
     });
 

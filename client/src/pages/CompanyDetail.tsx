@@ -18,7 +18,7 @@ export default function CompanyDetail() {
   const { slug } = useParams<{ slug: string }>();
 
   const { data: company, isLoading } = useQuery<CompanyWithJobs>({
-    queryKey: ["/api/companies", slug],
+    queryKey: [`/api/companies/${slug}`],
   });
 
   if (isLoading) {
