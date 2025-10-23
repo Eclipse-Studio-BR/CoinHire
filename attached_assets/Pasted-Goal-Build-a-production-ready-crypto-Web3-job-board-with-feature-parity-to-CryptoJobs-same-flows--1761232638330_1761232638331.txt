@@ -1,0 +1,48 @@
+Goal: Build a production-ready crypto/Web3 job board with feature parity to CryptoJobs (same flows, not branding/content).
+
+Stack (suggested): Next.js 14 + TS, Tailwind + shadcn/ui, Postgres + Prisma, Auth.js, Stripe, Resend, S3/R2. (Swap if needed.)
+
+Core features
+
+Auth & roles: Guest, Talent, Employer, Recruiter, Admin (RBAC + route guards).
+
+Jobs: CRUD, tiers (Normal/Featured/Premium), 7/14/30-day visibility, draft/pending/active/expired, counters (views/applies), in-platform apply w/ CV upload + optional external URL.
+
+Search & discovery: Keyword, category, company, location/remote, salary, type, level, posted date, sort; save searches; job alerts (daily/weekly email); related/recommended jobs; RSS/Atom.
+
+Companies: Directory, company pages, open roles, hiring badge.
+
+Talent: Profile/CV builder (export PDF), saved jobs, applications tracker, privacy controls, recommended jobs.
+
+Employers/Recruiters: Dashboard (jobs, credits, applications w/ simple scoring), questionnaire/interview/onboarding templates, recommended talents, team seats, invoices, analytics.
+
+Monetization: Stripe checkout for job packs (Featured/Premium, 7/14/30), recruiter subscriptions (quotas for premium/featured, profile views, recommendations). Webhooks to provision credits; proration & invoices.
+
+Marketing: Blog/CMS, newsletter sends (Premium above Featured), social promo queue (stubbed).
+
+Admin: Approve companies/jobs, takedowns, pricing & plans, credit adjustments, refunds, newsletter lineup, KPIs dashboard, feature flags.
+
+Data (minimal outline)
+Users (role), Companies, CompanyMembers, Jobs (tier/status/dates/tags), Applications (status/score), TalentProfiles, SavedJobs, SavedSearches (cadence), Plans, Payments, CreditLedger, Templates (questionnaire/interview/onboarding), AdminAudit.
+
+Behavioral rules
+
+Premium > Featured > Normal in home/search/newsletters.
+
+Respect profile visibility; meter quotas via CreditLedger.
+
+Daily/weekly job alert digests from saved searches.
+
+Deliverables
+
+Working repo + README (env, seed, deploy), Prisma migrations/seed, sample users, Cypress/Playwright smoke tests, minimal admin, OpenAPI list, CI (lint/type/test).
+
+Demo mode (seeded data, fake payments). Deploy on Replit.
+
+Acceptance (smoke)
+
+Employer buys pack → posts Premium job (30d) → boosted + queued for newsletter/social.
+
+Talent builds profile → exports CV → saves search → receives alert → applies and tracks status.
+
+Admin approves/moderates, edits pricing, adjusts credits, sends newsletter.
