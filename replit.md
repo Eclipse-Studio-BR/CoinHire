@@ -9,6 +9,8 @@ A production-ready crypto/Web3 job board platform connecting blockchain talent w
 - **Database**: PostgreSQL with Drizzle ORM
 - **Authentication**: Replit Auth (OpenID Connect) - supports Google, GitHub, X, Apple, email/password
 - **Payments**: Stripe with webhooks for credit provisioning
+- **File Storage**: Replit Object Storage (Google Cloud Storage) - cloud-based file uploads for resumes and logos
+- **File Upload**: Uppy v5 - client-side upload with presigned URLs and ACL policies
 - **Fonts**: Inter (primary), JetBrains Mono (monospace)
 
 ## Key Features
@@ -78,11 +80,13 @@ A production-ready crypto/Web3 job board platform connecting blockchain talent w
 client/
   ├── src/
   │   ├── components/
-  │   │   ├── ui/          # shadcn/ui components
+  │   │   ├── ui/               # shadcn/ui components
   │   │   ├── JobCard.tsx
   │   │   ├── CompanyCard.tsx
   │   │   ├── Navbar.tsx
-  │   │   └── Footer.tsx
+  │   │   ├── Footer.tsx
+  │   │   ├── FileUpload.tsx    # File upload wrapper
+  │   │   └── ObjectUploader.tsx # Uppy-based cloud uploader
   │   ├── pages/
   │   │   ├── Landing.tsx
   │   │   ├── Jobs.tsx
@@ -107,10 +111,12 @@ client/
   └── ...
 
 server/
-  ├── db.ts            # Database connection
-  ├── storage.ts       # Data access layer (IStorage interface)
-  ├── routes.ts        # API routes
-  ├── replitAuth.ts    # Authentication middleware
+  ├── db.ts              # Database connection
+  ├── storage.ts         # Data access layer (IStorage interface)
+  ├── routes.ts          # API routes
+  ├── replitAuth.ts      # Authentication middleware
+  ├── objectStorage.ts   # Object storage service (presigned URLs, ACL)
+  ├── objectAcl.ts       # Access control policies for uploaded files
   └── ...
 
 shared/
@@ -187,6 +193,9 @@ Following `design_guidelines.md`:
 - `VITE_STRIPE_PUBLIC_KEY` - Stripe publishable key (pk_...)
 - `REPL_ID` - Replit application ID (auto-provided)
 - `REPLIT_DOMAINS` - Allowed domains for OAuth (auto-provided)
+- `DEFAULT_OBJECT_STORAGE_BUCKET_ID` - Object storage bucket ID (auto-provisioned)
+- `PUBLIC_OBJECT_SEARCH_PATHS` - Public asset directories (auto-provisioned)
+- `PRIVATE_OBJECT_DIR` - Private upload directory (auto-provisioned)
 
 ### Optional
 - `ISSUER_URL` - Custom OIDC issuer (defaults to Replit)
@@ -212,25 +221,34 @@ npm run lint
 
 ## Current Status
 
-**Task 1 Complete**: ✅ Schema & Frontend
-- Complete database schema defined with all entities and relations
-- Design system configured (Inter font, crypto/Web3 color palette)
-- All React components built:
-  - Landing page with hero, stats, features
-  - Job listings with advanced filters
-  - Job detail with application flow
-  - Company directory and detail pages
-  - Multi-role dashboard (Talent/Employer/Admin)
-  - Job posting form
-  - Pricing page with tier comparison
-  - Stripe checkout integration
-  - Admin approval panel
-- Reusable components: JobCard, CompanyCard, Navbar, Footer
-- Authentication hooks and utilities
-- Professional, responsive design following crypto/Web3 aesthetic
+**MVP Development Progress**:
 
-**Next**: Task 2 - Backend Implementation
-**Then**: Task 3 - Integration & Testing
+✅ **Tasks 1-6 Complete**:
+1. Backend APIs with security model
+2. Role selection with privilege escalation prevention
+3. Frontend-backend integration with cache invalidation
+4. File upload system (resume + company logos)
+5. End-to-end testing & bug fixes
+6. Email integration (skipped per user request)
+
+✅ **Task 7 In Progress**: Cloud Object Storage Migration
+- Replit Object Storage setup complete (Google Cloud Storage backend)
+- Server-side services implemented:
+  - `objectStorage.ts`: Presigned URL generation, file serving, ACL enforcement
+  - `objectAcl.ts`: Access control policies (public/private visibility)
+- API endpoints added:
+  - `POST /api/objects/upload`: Get presigned upload URLs
+  - `PUT /api/objects/resume`: Set ACL for uploaded resumes (private)
+  - `PUT /api/objects/logo`: Set ACL for uploaded logos (public)
+  - `GET /objects/:path`: Serve protected files with ACL checks
+  - `GET /public-objects/:path`: Serve public assets
+- Client-side uploader:
+  - `ObjectUploader.tsx`: Uppy v5 integration with modal UI
+  - `FileUpload.tsx`: Migrated to use object storage
+- **Benefits**: Scalable cloud storage, presigned URLs for direct uploads, ACL-based access control, production-ready file management
+
+**Next**: Tasks 8-10 (AI recommendations, analytics, additional features)
+**Then**: Final testing & deployment
 
 ## User Workflows
 

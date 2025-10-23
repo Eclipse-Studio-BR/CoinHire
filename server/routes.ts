@@ -6,6 +6,8 @@ import { insertJobSchema, insertCompanySchema, insertApplicationSchema } from "@
 import { z } from "zod";
 import Stripe from "stripe";
 import { upload } from "./upload";
+import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { ObjectPermission } from "./objectAcl";
 import "./types";
 
 if (!process.env.STRIPE_SECRET_KEY) {
@@ -19,6 +21,119 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup Replit Auth
   await setupReplitAuth(app);
+
+  // ==================== Object Storage ====================
+  // Based on blueprint:javascript_object_storage
+  
+  // Serve protected uploaded files (resumes, logos) with ACL checking
+  app.get("/objects/:objectPath(*)", async (req, res) => {
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      
+      // Get user ID from session if authenticated
+      const userId = req.session?.userId;
+      
+      // Check ACL permissions
+      const canAccess = await objectStorageService.canAccessObjectEntity({
+        objectFile,
+        userId,
+        requestedPermission: ObjectPermission.READ,
+      });
+      
+      if (!canAccess) {
+        return res.sendStatus(403);
+      }
+      
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error accessing object:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
+    }
+  });
+
+  // Get presigned upload URL for client-side uploads
+  app.post("/api/objects/upload", requireAuth, async (req, res) => {
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ uploadURL });
+    } catch (error: any) {
+      console.error("Error generating upload URL:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Set ACL policy for uploaded resume
+  app.put("/api/objects/resume", requireAuth, async (req, res) => {
+    try {
+      if (!req.body.resumeURL) {
+        return res.status(400).json({ error: "resumeURL is required" });
+      }
+
+      const userId = req.session.userId!;
+      const objectStorageService = new ObjectStorageService();
+      
+      // Set ACL: owner only (private resume)
+      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
+        req.body.resumeURL,
+        {
+          owner: userId,
+          visibility: "private", // Only owner can access
+        }
+      );
+
+      res.status(200).json({ objectPath });
+    } catch (error: any) {
+      console.error("Error setting resume ACL:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Set ACL policy for uploaded company logo
+  app.put("/api/objects/logo", requireAuth, async (req, res) => {
+    try {
+      if (!req.body.logoURL) {
+        return res.status(400).json({ error: "logoURL is required" });
+      }
+
+      const userId = req.session.userId!;
+      const objectStorageService = new ObjectStorageService();
+      
+      // Set ACL: public visibility so anyone can see company logos
+      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
+        req.body.logoURL,
+        {
+          owner: userId,
+          visibility: "public",
+        }
+      );
+
+      res.status(200).json({ objectPath });
+    } catch (error: any) {
+      console.error("Error setting logo ACL:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Serve public assets (if needed in future)
+  app.get("/public-objects/:filePath(*)", async (req, res) => {
+    const filePath = req.params.filePath;
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const file = await objectStorageService.searchPublicObject(filePath);
+      if (!file) {
+        return res.status(404).json({ error: "File not found" });
+      }
+      objectStorageService.downloadObject(file, res);
+    } catch (error: any) {
+      console.error("Error searching for public object:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
 
   // ==================== Jobs ====================
 

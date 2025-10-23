@@ -1,16 +1,16 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload, FileText, X, Loader2 } from "lucide-react";
+import { FileText, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { ObjectUploader } from "./ObjectUploader";
+import type { UploadResult } from "@uppy/core";
 
 interface FileUploadProps {
   type: 'resume' | 'logo';
   onUploadComplete: (url: string) => void;
   currentFile?: string;
-  accept?: string;
   label?: string;
   className?: string;
 }
@@ -19,29 +19,43 @@ export function FileUpload({
   type,
   onUploadComplete,
   currentFile,
-  accept = type === 'resume' ? '.pdf,.doc,.docx' : 'image/*',
   label,
   className,
 }: FileUploadProps) {
-  const [uploading, setUploading] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<string | undefined>(currentFile);
+  const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleGetUploadParameters = async () => {
+    const response = await apiRequest("POST", "/api/objects/upload");
+    const data = await response.json();
+    return {
+      method: "PUT" as const,
+      url: data.uploadURL,
+    };
+  };
 
-    setUploading(true);
-    const formData = new FormData();
-    formData.append(type, file);
-
+  const handleComplete = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
     try {
-      const response = await apiRequest("POST", `/api/upload/${type}`, formData);
+      setUploading(true);
+      
+      if (!result.successful || result.successful.length === 0) {
+        throw new Error("Upload failed");
+      }
+
+      const uploadedUrl = result.successful[0].uploadURL;
+      
+      // Set ACL policy and get normalized path
+      const aclEndpoint = type === 'resume' ? '/api/objects/resume' : '/api/objects/logo';
+      const aclKey = type === 'resume' ? 'resumeURL' : 'logoURL';
+      
+      const response = await apiRequest("PUT", aclEndpoint, {
+        [aclKey]: uploadedUrl,
+      });
       const data = await response.json();
       
-      setUploadedFile(data.url);
-      onUploadComplete(data.url);
+      setUploadedFile(data.objectPath);
+      onUploadComplete(data.objectPath);
       
       toast({
         title: "Upload Successful",
@@ -50,7 +64,7 @@ export function FileUpload({
     } catch (error: any) {
       toast({
         title: "Upload Failed",
-        description: error.message,
+        description: error.message || "An error occurred during upload",
         variant: "destructive",
       });
     } finally {
@@ -61,10 +75,12 @@ export function FileUpload({
   const handleRemove = () => {
     setUploadedFile(undefined);
     onUploadComplete("");
-    if (inputRef.current) {
-      inputRef.current.value = "";
-    }
   };
+
+  // File type restrictions
+  const allowedFileTypes = type === 'resume' 
+    ? ['.pdf', '.doc', '.docx'] 
+    : ['.png', '.jpg', '.jpeg', '.webp', '.svg'];
 
   return (
     <div className={className}>
@@ -85,7 +101,7 @@ export function FileUpload({
             <p className="text-sm font-medium">
               {type === 'resume' ? 'Resume uploaded' : 'Logo uploaded'}
             </p>
-            <p className="text-xs text-muted-foreground">{uploadedFile}</p>
+            <p className="text-xs text-muted-foreground truncate max-w-xs">{uploadedFile}</p>
           </div>
           <Button
             type="button"
@@ -99,26 +115,20 @@ export function FileUpload({
         </div>
       ) : (
         <div className="border-2 border-dashed rounded-md p-6 text-center hover:border-primary transition-colors">
-          <Input
-            ref={inputRef}
-            type="file"
-            accept={accept}
-            onChange={handleFileChange}
-            className="hidden"
-            id={`file-upload-${type}`}
-            data-testid={`input-file-${type}`}
-            disabled={uploading}
-          />
-          <label htmlFor={`file-upload-${type}`} className="cursor-pointer">
-            <div className="flex flex-col items-center gap-2">
-              {uploading ? (
-                <Loader2 className="w-8 h-8 text-muted-foreground animate-spin" />
-              ) : (
-                <Upload className="w-8 h-8 text-muted-foreground" />
-              )}
+          <ObjectUploader
+            maxNumberOfFiles={1}
+            maxFileSize={5242880} // 5MB
+            allowedFileTypes={allowedFileTypes}
+            onGetUploadParameters={handleGetUploadParameters}
+            onComplete={handleComplete}
+            buttonVariant="ghost"
+            buttonClassName="w-full h-auto p-0 hover:bg-transparent"
+          >
+            <div className="flex flex-col items-center gap-2 py-2">
+              <FileText className="w-8 h-8 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium">
-                  {uploading ? 'Uploading...' : `Click to upload ${type}`}
+                  {uploading ? 'Processing...' : `Click to upload ${type}`}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {type === 'resume' 
@@ -127,7 +137,7 @@ export function FileUpload({
                 </p>
               </div>
             </div>
-          </label>
+          </ObjectUploader>
         </div>
       )}
     </div>
