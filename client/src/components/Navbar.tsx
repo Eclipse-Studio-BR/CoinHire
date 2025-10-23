@@ -29,21 +29,15 @@ export function Navbar() {
             </Link>
 
             <nav className="hidden md:flex items-center gap-6">
-              <Link href="/jobs">
-                <a className={`text-sm font-medium transition-colors hover:text-primary ${location === '/jobs' ? 'text-foreground' : 'text-muted-foreground'}`} data-testid="link-jobs">
-                  Find Jobs
-                </a>
+              <Link href="/jobs" className={`text-sm font-medium transition-colors hover:text-primary ${location === '/jobs' ? 'text-foreground' : 'text-muted-foreground'}`} data-testid="link-jobs">
+                Find Jobs
               </Link>
-              <Link href="/companies">
-                <a className={`text-sm font-medium transition-colors hover:text-primary ${location === '/companies' ? 'text-foreground' : 'text-muted-foreground'}`} data-testid="link-companies">
-                  Companies
-                </a>
+              <Link href="/companies" className={`text-sm font-medium transition-colors hover:text-primary ${location === '/companies' ? 'text-foreground' : 'text-muted-foreground'}`} data-testid="link-companies">
+                Companies
               </Link>
               {isAuthenticated && user?.role === 'employer' && (
-                <Link href="/post-job">
-                  <a className={`text-sm font-medium transition-colors hover:text-primary ${location === '/post-job' ? 'text-foreground' : 'text-muted-foreground'}`} data-testid="link-post-job">
-                    Post a Job
-                  </a>
+                <Link href="/post-job" className={`text-sm font-medium transition-colors hover:text-primary ${location === '/post-job' ? 'text-foreground' : 'text-muted-foreground'}`} data-testid="link-post-job">
+                  Post a Job
                 </Link>
               )}
             </nav>
@@ -81,39 +75,31 @@ export function Navbar() {
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/dashboard">
-                      <a className="flex items-center w-full" data-testid="link-dashboard">
-                        <LayoutDashboard className="mr-2 h-4 w-4" />
-                        <span>Dashboard</span>
-                      </a>
+                    <Link href="/dashboard" className="flex items-center w-full" data-testid="link-dashboard">
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      <span>Dashboard</span>
                     </Link>
                   </DropdownMenuItem>
                   {user?.role === 'talent' && (
                     <DropdownMenuItem asChild>
-                      <Link href="/profile">
-                        <a className="flex items-center w-full" data-testid="link-profile">
-                          <User className="mr-2 h-4 w-4" />
-                          <span>Profile</span>
-                        </a>
+                      <Link href="/profile" className="flex items-center w-full" data-testid="link-profile">
+                        <User className="mr-2 h-4 w-4" />
+                        <span>Profile</span>
                       </Link>
                     </DropdownMenuItem>
                   )}
                   {user?.role === 'employer' && (
                     <DropdownMenuItem asChild>
-                      <Link href="/company">
-                        <a className="flex items-center w-full" data-testid="link-company">
-                          <Building2 className="mr-2 h-4 w-4" />
-                          <span>My Company</span>
-                        </a>
+                      <Link href="/company" className="flex items-center w-full" data-testid="link-company">
+                        <Building2 className="mr-2 h-4 w-4" />
+                        <span>My Company</span>
                       </Link>
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem asChild>
-                    <Link href="/settings">
-                      <a className="flex items-center w-full" data-testid="link-settings">
-                        <Settings className="mr-2 h-4 w-4" />
-                        <span>Settings</span>
-                      </a>
+                    <Link href="/settings" className="flex items-center w-full" data-testid="link-settings">
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Settings</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
