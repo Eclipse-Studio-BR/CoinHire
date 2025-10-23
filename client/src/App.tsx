@@ -31,14 +31,13 @@ function Router() {
 
   return (
     <Switch>
-      {/* Public routes */}
-      {!isAuthenticated && !isLoading && <Route path="/" component={Landing} />}
-      
-      {/* Authenticated routes */}
-      {isAuthenticated && user?.role !== 'guest' && <Route path="/" component={Jobs} />}
-      
       {/* Role selection (for new users) */}
       <Route path="/select-role" component={RoleSelection} />
+      
+      {/* Home route - authenticated users see Jobs, others see Landing */}
+      <Route path="/">
+        {isAuthenticated && user?.role !== 'guest' ? <Jobs /> : <Landing />}
+      </Route>
       
       {/* Job routes */}
       <Route path="/jobs" component={Jobs} />
