@@ -16,12 +16,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { FileUpload } from "@/components/FileUpload";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { JOB_CATEGORIES, JOB_TYPES, EXPERIENCE_LEVELS } from "@/lib/constants";
 import { insertJobSchema } from "@shared/schema";
+import { Plus } from "lucide-react";
 
 export default function PostJob() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
@@ -64,6 +74,38 @@ export default function PostJob() {
   });
 
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
+  const [showCreateCompany, setShowCreateCompany] = useState(false);
+  const [companyData, setCompanyData] = useState({
+    name: '',
+    description: '',
+    website: '',
+    location: '',
+    logo: '',
+  });
+
+  const createCompanyMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await apiRequest("POST", "/api/companies", data);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Company Created",
+        description: "Your company has been submitted for approval.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/employer/companies"] });
+      setSelectedCompanyId(data.id);
+      setShowCreateCompany(false);
+      setCompanyData({ name: '', description: '', website: '', location: '', logo: '' });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const postJobMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -156,7 +198,7 @@ export default function PostJob() {
                 <CardTitle>Company</CardTitle>
                 <CardDescription>Select the company for this job posting</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId} required>
                   <SelectTrigger data-testid="select-company">
                     <SelectValue placeholder="Select a company" />
@@ -169,6 +211,106 @@ export default function PostJob() {
                     ))}
                   </SelectContent>
                 </Select>
+
+                <Dialog open={showCreateCompany} onOpenChange={setShowCreateCompany}>
+                  <DialogTrigger asChild>
+                    <Button type="button" variant="outline" className="w-full gap-2" data-testid="button-create-company">
+                      <Plus className="w-4 h-4" />
+                      Create New Company
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Create Company</DialogTitle>
+                      <DialogDescription>
+                        Add your company information. It will be reviewed before appearing on the platform.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        createCompanyMutation.mutate(companyData);
+                      }}
+                      className="space-y-4"
+                    >
+                      <div>
+                        <Label htmlFor="companyName">Company Name *</Label>
+                        <Input
+                          id="companyName"
+                          value={companyData.name}
+                          onChange={(e) => setCompanyData({ ...companyData, name: e.target.value })}
+                          placeholder="e.g. Acme Corp"
+                          required
+                          data-testid="input-company-name"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="companyDescription">Description *</Label>
+                        <Textarea
+                          id="companyDescription"
+                          value={companyData.description}
+                          onChange={(e) => setCompanyData({ ...companyData, description: e.target.value })}
+                          placeholder="Tell us about your company..."
+                          className="min-h-[100px]"
+                          required
+                          data-testid="textarea-company-description"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="companyWebsite">Website</Label>
+                          <Input
+                            id="companyWebsite"
+                            type="url"
+                            value={companyData.website}
+                            onChange={(e) => setCompanyData({ ...companyData, website: e.target.value })}
+                            placeholder="https://example.com"
+                            data-testid="input-company-website"
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="companyLocation">Location</Label>
+                          <Input
+                            id="companyLocation"
+                            value={companyData.location}
+                            onChange={(e) => setCompanyData({ ...companyData, location: e.target.value })}
+                            placeholder="e.g. San Francisco, CA"
+                            data-testid="input-company-location"
+                          />
+                        </div>
+                      </div>
+
+                      <FileUpload
+                        type="logo"
+                        onUploadComplete={(url) => setCompanyData({ ...companyData, logo: url })}
+                        label="Company Logo (Optional)"
+                      />
+
+                      <div className="flex gap-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setShowCreateCompany(false)}
+                          className="flex-1"
+                          data-testid="button-cancel-company"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          disabled={createCompanyMutation.isPending}
+                          className="flex-1"
+                          data-testid="button-submit-company"
+                        >
+                          {createCompanyMutation.isPending ? 'Creating...' : 'Create Company'}
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
               </CardContent>
             </Card>
 

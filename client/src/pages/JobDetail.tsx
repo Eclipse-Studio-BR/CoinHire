@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Navbar } from "@/components/Navbar";
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { FileUpload } from "@/components/FileUpload";
 import {
   MapPin,
   Briefcase,
@@ -45,6 +46,7 @@ export default function JobDetail() {
   const { id } = useParams<{ id: string }>();
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const [resumeUrl, setResumeUrl] = useState<string>("");
 
   const { data: job, isLoading } = useQuery<JobWithCompany>({
     queryKey: [`/api/jobs/${id}`],
@@ -292,6 +294,7 @@ export default function JobDetail() {
                             const formData = new FormData(e.currentTarget);
                             applyMutation.mutate({
                               coverLetter: formData.get('coverLetter') as string,
+                              resumeUrl: resumeUrl || undefined,
                             });
                           }}
                           className="space-y-4"
@@ -307,6 +310,13 @@ export default function JobDetail() {
                               required
                             />
                           </div>
+                          
+                          <FileUpload
+                            type="resume"
+                            onUploadComplete={setResumeUrl}
+                            label="Resume/CV (Optional)"
+                          />
+                          
                           <Button type="submit" className="w-full" disabled={applyMutation.isPending} data-testid="button-submit-application">
                             {applyMutation.isPending ? 'Submitting...' : 'Submit Application'}
                           </Button>
