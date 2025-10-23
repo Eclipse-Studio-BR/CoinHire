@@ -94,6 +94,19 @@ export default function AdminPanel() {
     },
   });
 
+  const rejectCompanyMutation = useMutation({
+    mutationFn: async (companyId: string) => {
+      await apiRequest("POST", `/api/admin/companies/${companyId}/reject`, {});
+    },
+    onSuccess: () => {
+      toast({ title: "Company Rejected" });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/companies/pending"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   if (authLoading || !isAuthenticated || user?.role !== 'admin') {
     return (
       <div className="flex flex-col min-h-screen">
@@ -283,15 +296,28 @@ export default function AdminPanel() {
                               {new Date(company.createdAt).toLocaleDateString()}
                             </TableCell>
                             <TableCell>
-                              <Button
-                                size="sm"
-                                onClick={() => approveCompanyMutation.mutate(company.id)}
-                                data-testid={`button-approve-${company.id}`}
-                                className="gap-1"
-                              >
-                                <Check className="w-4 h-4" />
-                                Approve
-                              </Button>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  onClick={() => approveCompanyMutation.mutate(company.id)}
+                                  data-testid={`button-approve-${company.id}`}
+                                  className="gap-1"
+                                >
+                                  <Check className="w-4 h-4" />
+                                  Approve
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => rejectCompanyMutation.mutate(company.id)}
+                                  data-testid={`button-reject-${company.id}`}
+                                  className="gap-1"
+                                >
+                                  <X className="w-4 h-4" />
+                                  Reject
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}

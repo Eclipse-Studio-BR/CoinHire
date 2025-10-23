@@ -72,6 +72,7 @@ export default function JobDetail() {
         description: "Your application has been sent to the employer.",
       });
       queryClient.invalidateQueries({ queryKey: [`/api/jobs/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
@@ -102,6 +103,7 @@ export default function JobDetail() {
         title: "Job Saved",
         description: "Added to your saved jobs.",
       });
+      queryClient.invalidateQueries({ queryKey: ["/api/saved-jobs"] });
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
