@@ -16,22 +16,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { FileUpload } from "@/components/FileUpload";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { JOB_CATEGORIES, JOB_TYPES, EXPERIENCE_LEVELS } from "@/lib/constants";
-import { insertJobSchema } from "@shared/schema";
+import { insertJobSchema, type Company } from "@shared/schema";
 import { Plus } from "lucide-react";
+import { CompanyFormDialog } from "@/components/CompanyFormDialog";
 
 export default function PostJob() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
@@ -68,44 +60,31 @@ export default function PostJob() {
     }
   }, [isAuthenticated, authLoading, user, toast, setLocation]);
 
-  const { data: companies = [] } = useQuery({
+  type EmployerCompany = Company & { jobCount?: number };
+  const { data: companies = [] } = useQuery<EmployerCompany[]>({
     queryKey: ["/api/employer/companies"],
     enabled: isAuthenticated,
   });
 
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
   const [showCreateCompany, setShowCreateCompany] = useState(false);
-  const [companyData, setCompanyData] = useState({
-    name: '',
-    description: '',
-    website: '',
-    location: '',
-    logo: '',
-  });
+  const hasAnyCompany = companies.length > 0;
+  const hasSingleCompany = companies.length === 1;
+  const primaryCompany = hasSingleCompany ? companies[0] : null;
 
-  const createCompanyMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const response = await apiRequest("POST", "/api/companies", data);
-      return response.json();
-    },
-    onSuccess: (data) => {
-      toast({
-        title: "Company Created",
-        description: "Your company has been submitted for approval.",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/employer/companies"] });
-      setSelectedCompanyId(data.id);
-      setShowCreateCompany(false);
-      setCompanyData({ name: '', description: '', website: '', location: '', logo: '' });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+useEffect(() => {
+  if (primaryCompany) {
+    setSelectedCompanyId(primaryCompany.id);
+  } else {
+    setSelectedCompanyId("");
+  }
+}, [primaryCompany]);
+
+useEffect(() => {
+  if (companies.length > 1 && !selectedCompanyId) {
+    setSelectedCompanyId(companies[0]!.id);
+  }
+}, [companies, selectedCompanyId]);
 
   const postJobMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -142,8 +121,17 @@ export default function PostJob() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!primaryCompany && !selectedCompanyId) {
+      toast({
+        title: "Select a company",
+        description: "Create your company before posting a job.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const jobData = {
-      companyId: selectedCompanyId,
+      companyId: primaryCompany ? primaryCompany.id : selectedCompanyId,
       title: formData.title,
       description: formData.description,
       requirements: formData.requirements || undefined,
@@ -159,7 +147,6 @@ export default function PostJob() {
       externalUrl: formData.externalUrl || undefined,
       tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(Boolean) : undefined,
       visibilityDays: formData.visibilityDays,
-      status: 'pending',
     };
 
     postJobMutation.mutate(jobData);
@@ -196,121 +183,66 @@ export default function PostJob() {
             <Card>
               <CardHeader>
                 <CardTitle>Company</CardTitle>
-                <CardDescription>Select the company for this job posting</CardDescription>
+                <CardDescription>
+                  {hasSingleCompany && primaryCompany
+                    ? "Jobs will be posted under your company."
+                    : "Create your company before posting jobs"}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId} required>
-                  <SelectTrigger data-testid="select-company">
-                    <SelectValue placeholder="Select a company" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {companies.map((company: any) => (
-                      <SelectItem key={company.id} value={company.id}>
-                        {company.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Dialog open={showCreateCompany} onOpenChange={setShowCreateCompany}>
-                  <DialogTrigger asChild>
-                    <Button type="button" variant="outline" className="w-full gap-2" data-testid="button-create-company">
-                      <Plus className="w-4 h-4" />
-                      Create New Company
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                      <DialogTitle>Create Company</DialogTitle>
-                      <DialogDescription>
-                        Add your company information. It will be reviewed before appearing on the platform.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        createCompanyMutation.mutate(companyData);
-                      }}
-                      className="space-y-4"
+                {companies.length === 0 ? (
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Create your company before posting a job.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full gap-2"
+                      onClick={() => setShowCreateCompany(true)}
+                      data-testid="button-create-company"
                     >
-                      <div>
-                        <Label htmlFor="companyName">Company Name *</Label>
-                        <Input
-                          id="companyName"
-                          value={companyData.name}
-                          onChange={(e) => setCompanyData({ ...companyData, name: e.target.value })}
-                          placeholder="e.g. Acme Corp"
-                          required
-                          data-testid="input-company-name"
-                        />
-                      </div>
+                      <Plus className="h-4 w-4" />
+                      Create Company
+                    </Button>
+                  </div>
+                ) : companies.length === 1 && primaryCompany ? (
+                  <div className="rounded-md border bg-muted/30 p-4">
+                    <p className="text-sm font-medium">{primaryCompany.name}</p>
+                    {primaryCompany.location && (
+                      <p className="text-xs text-muted-foreground">
+                        {primaryCompany.location}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <Select
+                      value={selectedCompanyId}
+                      onValueChange={setSelectedCompanyId}
+                      required
+                    >
+                      <SelectTrigger data-testid="select-company">
+                        <SelectValue placeholder="Select a company" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {companies.map((company) => (
+                          <SelectItem key={company.id} value={company.id}>
+                            {company.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </>
+                )}
 
-                      <div>
-                        <Label htmlFor="companyDescription">Description *</Label>
-                        <Textarea
-                          id="companyDescription"
-                          value={companyData.description}
-                          onChange={(e) => setCompanyData({ ...companyData, description: e.target.value })}
-                          placeholder="Tell us about your company..."
-                          className="min-h-[100px]"
-                          required
-                          data-testid="textarea-company-description"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="companyWebsite">Website</Label>
-                          <Input
-                            id="companyWebsite"
-                            type="url"
-                            value={companyData.website}
-                            onChange={(e) => setCompanyData({ ...companyData, website: e.target.value })}
-                            placeholder="https://example.com"
-                            data-testid="input-company-website"
-                          />
-                        </div>
-
-                        <div>
-                          <Label htmlFor="companyLocation">Location</Label>
-                          <Input
-                            id="companyLocation"
-                            value={companyData.location}
-                            onChange={(e) => setCompanyData({ ...companyData, location: e.target.value })}
-                            placeholder="e.g. San Francisco, CA"
-                            data-testid="input-company-location"
-                          />
-                        </div>
-                      </div>
-
-                      <FileUpload
-                        type="logo"
-                        onUploadComplete={(url) => setCompanyData({ ...companyData, logo: url })}
-                        label="Company Logo (Optional)"
-                      />
-
-                      <div className="flex gap-3">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setShowCreateCompany(false)}
-                          className="flex-1"
-                          data-testid="button-cancel-company"
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          type="submit"
-                          disabled={createCompanyMutation.isPending}
-                          className="flex-1"
-                          data-testid="button-submit-company"
-                        >
-                          {createCompanyMutation.isPending ? 'Creating...' : 'Create Company'}
-                        </Button>
-                      </div>
-                    </form>
-                  </DialogContent>
-                </Dialog>
+                <CompanyFormDialog
+                  open={showCreateCompany}
+                  onOpenChange={setShowCreateCompany}
+                  onSuccess={(company) => {
+                    setSelectedCompanyId(company.id);
+                  }}
+                />
               </CardContent>
             </Card>
 

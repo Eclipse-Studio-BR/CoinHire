@@ -8,11 +8,17 @@ import { Card } from "@/components/ui/card";
 import { Search } from "lucide-react";
 import type { Company } from "@shared/schema";
 
+type CompanyWithStats = Company & { jobCount: number };
+
 export default function Companies() {
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: companies = [], isLoading } = useQuery<Company[]>({
+  const { data: companies = [], isLoading } = useQuery<CompanyWithStats[]>({
     queryKey: ["/api/companies", { search: searchTerm }],
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnReconnect: "always",
+    refetchOnWindowFocus: "always",
   });
 
   return (
@@ -57,7 +63,7 @@ export default function Companies() {
           ) : companies.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {companies.map((company) => (
-                <CompanyCard key={company.id} company={company} jobCount={0} />
+                <CompanyCard key={company.id} company={company} jobCount={company.jobCount} />
               ))}
             </div>
           ) : (

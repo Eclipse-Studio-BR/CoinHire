@@ -8,11 +8,13 @@ import type { Company } from "@shared/schema";
 import { truncate } from "@/lib/utils";
 
 interface CompanyCardProps {
-  company: Company;
+  company: Company & { jobCount?: number };
   jobCount?: number;
 }
 
 export function CompanyCard({ company, jobCount = 0 }: CompanyCardProps) {
+  const openPositions = jobCount ?? company.jobCount ?? 0;
+
   return (
     <Card className="hover-elevate transition-all duration-200" data-testid={`card-company-${company.id}`}>
       <CardHeader className="flex flex-row items-center gap-4 pb-3">
@@ -49,7 +51,7 @@ export function CompanyCard({ company, jobCount = 0 }: CompanyCardProps) {
       <CardFooter className="flex justify-between items-center pt-4 border-t">
         <div className="flex items-center gap-1 text-sm text-muted-foreground" data-testid="text-job-count">
           <Briefcase className="w-4 h-4" />
-          <span>{jobCount} open {jobCount === 1 ? 'position' : 'positions'}</span>
+          <span>{openPositions} open {openPositions === 1 ? 'position' : 'positions'}</span>
         </div>
         <Link href={`/companies/${company.slug}`}>
           <Button variant="outline" size="sm" data-testid="button-view-company">

@@ -1,45 +1,128 @@
+import { useMemo, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Check, Star, Zap } from "lucide-react";
 import type { Plan } from "@shared/schema";
+
+type Tier = Plan["tier"];
+
+const tierFeatures: Record<Tier, string[]> = {
+  normal: [
+    "Job listing visible for selected duration",
+    "Appears in standard search results",
+    "Basic applicant tracking",
+    "Email notifications",
+  ],
+  featured: [
+    "All Normal features",
+    "Highlighted with star badge",
+    "Priority in search results",
+    "Featured on homepage",
+    "Enhanced visibility",
+  ],
+  premium: [
+    "All Featured features",
+    "Top priority in all listings",
+    "Purple gradient border",
+    "Social media promotion",
+    "Newsletter feature",
+    "Premium support",
+  ],
+};
+
+const tierMeta: Record<
+  Tier,
+  {
+    label: string;
+    description: string;
+    cardClass?: string;
+    badge?: { text: string; className: string };
+    icon?: ReactNode;
+    buttonClassName?: string;
+  }
+> = {
+  normal: {
+    label: "Normal",
+    description: "Great for standard positions",
+    cardClass: "border-2",
+    buttonClassName: "",
+  },
+  featured: {
+    label: "Featured",
+    description: "Stand out from the crowd",
+    cardClass: "border-2 border-chart-4 relative",
+    badge: { text: "Most Popular", className: "bg-chart-4 text-white px-4 py-1" },
+    icon: <Star className="w-6 h-6 text-chart-4 fill-chart-4" />,
+    buttonClassName: "bg-chart-4 hover:bg-chart-4/90 text-white border-transparent",
+  },
+  premium: {
+    label: "Premium",
+    description: "Maximum visibility",
+    cardClass: "border-2 border-chart-3 relative",
+    badge: { text: "Premium", className: "bg-gradient-to-r from-chart-3 to-primary text-white px-4 py-1" },
+    icon: <Zap className="w-6 h-6 text-chart-3" />,
+    buttonClassName:
+      "bg-gradient-to-r from-chart-3 to-primary text-white hover:from-chart-3/90 hover:to-primary/90 border-transparent",
+  },
+};
+
+const tierOrder: Tier[] = ["normal", "featured", "premium"];
+
+function formatPrice(cents: number): string {
+  return `$${(cents / 100).toFixed(0)}`;
+}
 
 export default function Pricing() {
   const { data: plans = [], isLoading } = useQuery<Plan[]>({
     queryKey: ["/api/plans"],
   });
 
-  const activePlans = plans.filter(p => p.isActive);
-  const normalPlans = activePlans.filter(p => p.tier === 'normal');
-  const featuredPlans = activePlans.filter(p => p.tier === 'featured');
-  const premiumPlans = activePlans.filter(p => p.tier === 'premium');
+  const activePlans = useMemo(() => plans.filter((plan) => plan.isActive), [plans]);
 
-  const tierFeatures = {
-    normal: [
-      'Job listing visible for selected duration',
-      'Appears in standard search results',
-      'Basic applicant tracking',
-      'Email notifications',
-    ],
-    featured: [
-      'All Normal features',
-      'Highlighted with star badge',
-      'Priority in search results',
-      'Featured on homepage',
-      'Enhanced visibility',
-    ],
-    premium: [
-      'All Featured features',
-      'Top priority in all listings',
-      'Purple gradient border',
-      'Social media promotion',
-      'Newsletter feature',
-      'Premium support',
-    ],
+  const tierPlans = useMemo(
+    () =>
+      tierOrder.reduce(
+        (acc, tier) => {
+          acc[tier] = activePlans.filter((plan) => plan.tier === tier);
+          return acc;
+        },
+        {} as Record<Tier, Plan[]>,
+      ),
+    [activePlans],
+  );
+
+  const [selectedTier, setSelectedTier] = useState<Tier | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const selectedPlans = selectedTier ? tierPlans[selectedTier] ?? [] : [];
+  const selectedTierMeta = selectedTier ? tierMeta[selectedTier] : null;
+
+  const handleSelectTier = (tier: Tier) => {
+    if (!tierPlans[tier] || tierPlans[tier].length === 0) {
+      return;
+    }
+    setSelectedTier(tier);
+    setIsDialogOpen(true);
+  };
+
+  const handleDialogChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setSelectedTier(null);
+    }
   };
 
   return (
@@ -61,125 +144,67 @@ export default function Pricing() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
               {[...Array(3)].map((_, i) => (
                 <Card key={i} className="h-96 animate-pulse">
-                  <div className="h-full bg-muted"></div>
+                  <div className="h-full bg-muted" />
                 </Card>
               ))}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-              {/* Normal Tier */}
-              <Card className="border-2">
-                <CardHeader className="text-center pb-8">
-                  <CardTitle className="text-2xl mb-2">Normal</CardTitle>
-                  <CardDescription>Great for standard positions</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-3">
-                    {normalPlans.map((plan) => (
-                      <div key={plan.id} className="flex flex-col">
-                        <div className="flex items-baseline justify-center mb-2">
-                          <span className="text-4xl font-bold">${(plan.price / 100).toFixed(0)}</span>
-                          <span className="text-muted-foreground ml-2">/ {plan.visibilityDays} days</span>
-                        </div>
-                        <Link href={`/checkout?planId=${plan.id}`}>
-                          <Button variant="outline" className="w-full" data-testid={`button-buy-${plan.id}`}>
-                            Post for {plan.visibilityDays} days
-                          </Button>
-                        </Link>
-                      </div>
-                    ))}
-                  </div>
+              {tierOrder.map((tier) => {
+                const plansForTier = tierPlans[tier];
+                const meta = tierMeta[tier];
+                const startingPlan = plansForTier[0];
 
-                  <div className="space-y-3 pt-4 border-t">
-                    {tierFeatures.normal.map((feature, i) => (
-                      <div key={i} className="flex items-start gap-2">
-                        <Check className="w-5 h-5 text-chart-2 flex-shrink-0 mt-0.5" />
-                        <span className="text-sm">{feature}</span>
+                return (
+                  <Card key={tier} className={meta.cardClass}>
+                    {meta.badge ? (
+                      <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                        <Badge className={meta.badge.className}>{meta.badge.text}</Badge>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                    ) : null}
+                    <CardHeader className="text-center pb-6">
+                      {meta.icon ? <div className="flex justify-center mb-2">{meta.icon}</div> : null}
+                      <CardTitle className="text-2xl mb-2">{meta.label}</CardTitle>
+                      <CardDescription>{meta.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="text-center">
+                        {startingPlan ? (
+                          <>
+                            <p className="text-sm uppercase tracking-wide text-muted-foreground mb-1">
+                              Starting from
+                            </p>
+                            <div className="text-4xl font-bold">
+                              {formatPrice(startingPlan.price)}
+                            </div>
+                          </>
+                        ) : (
+                          <p className="text-muted-foreground">Plans currently unavailable</p>
+                        )}
+                      </div>
 
-              {/* Featured Tier */}
-              <Card className="border-2 border-chart-4 relative">
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-chart-4 text-white px-4 py-1">Most Popular</Badge>
-                </div>
-                <CardHeader className="text-center pb-8">
-                  <div className="flex justify-center mb-2">
-                    <Star className="w-6 h-6 text-chart-4 fill-chart-4" />
-                  </div>
-                  <CardTitle className="text-2xl mb-2">Featured</CardTitle>
-                  <CardDescription>Stand out from the crowd</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-3">
-                    {featuredPlans.map((plan) => (
-                      <div key={plan.id} className="flex flex-col">
-                        <div className="flex items-baseline justify-center mb-2">
-                          <span className="text-4xl font-bold">${(plan.price / 100).toFixed(0)}</span>
-                          <span className="text-muted-foreground ml-2">/ {plan.visibilityDays} days</span>
-                        </div>
-                        <Link href={`/checkout?planId=${plan.id}`}>
-                          <Button className="w-full bg-chart-4 hover:bg-chart-4/90" data-testid={`button-buy-${plan.id}`}>
-                            Post for {plan.visibilityDays} days
-                          </Button>
-                        </Link>
+                      <div className="space-y-3 border-t pt-4">
+                        {tierFeatures[tier].map((feature, index) => (
+                          <div key={index} className="flex items-start gap-2">
+                            <Check className="w-5 h-5 text-chart-2 flex-shrink-0 mt-0.5" />
+                            <span className="text-sm">{feature}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-
-                  <div className="space-y-3 pt-4 border-t">
-                    {tierFeatures.featured.map((feature, i) => (
-                      <div key={i} className="flex items-start gap-2">
-                        <Check className="w-5 h-5 text-chart-2 flex-shrink-0 mt-0.5" />
-                        <span className="text-sm">{feature}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Premium Tier */}
-              <Card className="border-2 border-chart-3 relative">
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-gradient-to-r from-chart-3 to-primary text-white px-4 py-1">Premium</Badge>
-                </div>
-                <CardHeader className="text-center pb-8">
-                  <div className="flex justify-center mb-2">
-                    <Zap className="w-6 h-6 text-chart-3" />
-                  </div>
-                  <CardTitle className="text-2xl mb-2">Premium</CardTitle>
-                  <CardDescription>Maximum visibility</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-3">
-                    {premiumPlans.map((plan) => (
-                      <div key={plan.id} className="flex flex-col">
-                        <div className="flex items-baseline justify-center mb-2">
-                          <span className="text-4xl font-bold">${(plan.price / 100).toFixed(0)}</span>
-                          <span className="text-muted-foreground ml-2">/ {plan.visibilityDays} days</span>
-                        </div>
-                        <Link href={`/checkout?planId=${plan.id}`}>
-                          <Button className="w-full bg-gradient-to-r from-chart-3 to-primary" data-testid={`button-buy-${plan.id}`}>
-                            Post for {plan.visibilityDays} days
-                          </Button>
-                        </Link>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="space-y-3 pt-4 border-t">
-                    {tierFeatures.premium.map((feature, i) => (
-                      <div key={i} className="flex items-start gap-2">
-                        <Check className="w-5 h-5 text-chart-2 flex-shrink-0 mt-0.5" />
-                        <span className="text-sm">{feature}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                    </CardContent>
+                    <CardFooter>
+                      <Button
+                        className={`w-full ${meta.buttonClassName ?? ""}`}
+                        onClick={() => handleSelectTier(tier)}
+                        disabled={!startingPlan}
+                        data-testid={`button-select-${tier}`}
+                      >
+                        Select {meta.label} Plan
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                );
+              })}
             </div>
           )}
 
@@ -225,6 +250,50 @@ export default function Pricing() {
       </main>
 
       <Footer />
+
+      <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedTierMeta ? `Select a ${selectedTierMeta.label} timeframe` : "Select timeframe"}
+            </DialogTitle>
+            <DialogDescription>
+              Choose how long you’d like your job listing to stay live. You’ll complete checkout on the next step.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedPlans.length > 0 ? (
+            <div className="space-y-4">
+              {selectedPlans.map((plan) => (
+                <div
+                  key={plan.id}
+                  className="flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div>
+                    <p className="text-xl font-semibold">{formatPrice(plan.price)}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Visibility for {plan.visibilityDays} days • {plan.credits} job credit{plan.credits > 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <Link href={`/checkout?planId=${plan.id}`}>
+                    <Button
+                      className={`w-full sm:w-auto ${selectedTier ? tierMeta[selectedTier].buttonClassName ?? "" : ""}`}
+                      onClick={() => setIsDialogOpen(false)}
+                      data-testid={`button-buy-${plan.id}`}
+                    >
+                      Continue with {plan.visibilityDays}-day plan
+                    </Button>
+                  </Link>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              We’re refreshing these plans right now. Please check back soon.
+            </p>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

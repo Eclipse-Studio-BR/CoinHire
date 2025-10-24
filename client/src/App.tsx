@@ -21,6 +21,7 @@ import Profile from "@/pages/Profile";
 import RoleSelection from "@/pages/RoleSelection";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import EmployerApplications from "@/pages/EmployerApplications";
 
 function Router() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -61,6 +62,7 @@ function Router() {
       <Route path="/post-job" component={PostJob} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/checkout" component={Checkout} />
+      <Route path="/employer/applications" component={EmployerApplications} />
       
       {/* Admin routes */}
       <Route path="/admin" component={AdminPanel} />

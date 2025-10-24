@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useStripe, Elements, PaymentElement, useElements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
@@ -11,10 +11,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import type { Plan } from "@shared/schema";
 
-if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
-  throw new Error('Missing required Stripe key: VITE_STRIPE_PUBLIC_KEY');
+let stripePromise: ReturnType<typeof loadStripe> | null = null;
+function getStripePromise() {
+  if (!stripePromise) {
+    const publishableKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
+    if (!publishableKey) {
+      throw new Error('Missing required Stripe key: VITE_STRIPE_PUBLIC_KEY');
+    }
+    stripePromise = loadStripe(publishableKey);
+  }
+  return stripePromise;
 }
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 const CheckoutForm = ({ planId }: { planId: string }) => {
   const stripe = useStripe();
@@ -75,6 +82,7 @@ export default function Checkout() {
   const [searchParams] = useState(() => new URLSearchParams(window.location.search));
   const planId = searchParams.get('planId');
   const [clientSecret, setClientSecret] = useState("");
+  const stripePromiseValue = useMemo(() => getStripePromise(), []);
 
   const { data: plan } = useQuery<Plan>({
     queryKey: [`/api/plans/${planId}`],
@@ -169,7 +177,7 @@ export default function Checkout() {
               <CardDescription>Enter your payment details below</CardDescription>
             </CardHeader>
             <CardContent>
-              <Elements stripe={stripePromise} options={{ clientSecret }}>
+              <Elements stripe={stripePromiseValue} options={{ clientSecret }}>
                 <CheckoutForm planId={planId} />
               </Elements>
             </CardContent>

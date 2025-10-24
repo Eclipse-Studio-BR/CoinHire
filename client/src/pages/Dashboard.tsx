@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,20 +14,41 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Briefcase, Eye, Users, DollarSign, FileText, Bookmark, Plus } from "lucide-react";
+import { Briefcase, Eye, Users, DollarSign, FileText, Bookmark, Plus, Pencil, Building2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import type { Application, Job, Company, SavedJob } from "@shared/schema";
 import { formatTimeAgo } from "@/lib/utils";
 import { APPLICATION_STATUSES } from "@/lib/constants";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { FileUpload } from "@/components/FileUpload";
+import { CompanyFormDialog } from "@/components/CompanyFormDialog";
 
 type ApplicationWithJob = Application & { job?: Job & { company?: Company } };
 type SavedJobWithDetails = SavedJob & { job?: Job & { company?: Company } };
+type CompanyWithStats = Company & { jobCount?: number };
 
 export default function Dashboard() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const [jobBeingDeleted, setJobBeingDeleted] = useState<string | null>(null);
+  const [companyBeingDeleted, setCompanyBeingDeleted] = useState<string | null>(null);
+  const [isCreateCompanyOpen, setIsCreateCompanyOpen] = useState(false);
+  const [isEditCompanyOpen, setIsEditCompanyOpen] = useState(false);
+  const [editingCompany, setEditingCompany] = useState<CompanyWithStats | null>(null);
+  const [editCompanyData, setEditCompanyData] = useState({
+    name: "",
+    description: "",
+    website: "",
+    location: "",
+    size: "",
+    logo: "",
+  });
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -60,6 +81,226 @@ export default function Dashboard() {
   const { data: employerJobs = [] } = useQuery<Job[]>({
     queryKey: ["/api/employer/jobs"],
     enabled: isAuthenticated && (user?.role === 'employer' || user?.role === 'recruiter'),
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnReconnect: "always",
+    refetchOnWindowFocus: "always",
+  });
+  const { data: employerCompanies = [] } = useQuery<CompanyWithStats[]>({
+    queryKey: ["/api/employer/companies"],
+    enabled: isAuthenticated && (user?.role === 'employer' || user?.role === 'recruiter'),
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnReconnect: "always",
+    refetchOnWindowFocus: "always",
+  });
+
+  const canCreateCompany = (user?.role === 'admin') || employerCompanies.length === 0;
+
+  const deleteJobMutation = useMutation({
+    mutationFn: async (jobId: string) => {
+      await apiRequest("DELETE", `/api/jobs/${jobId}`);
+    },
+    onMutate: async (jobId: string) => {
+      setJobBeingDeleted(jobId);
+      await queryClient.cancelQueries({ queryKey: ["/api/employer/jobs"] });
+      await queryClient.cancelQueries({ queryKey: ["/api/companies"] });
+
+      const previousEmployerJobs = queryClient.getQueryData<Job[]>(["/api/employer/jobs"]);
+      const jobToDelete = previousEmployerJobs?.find((job) => job.id === jobId);
+
+      if (previousEmployerJobs) {
+        queryClient.setQueryData<Job[]>(["/api/employer/jobs"], previousEmployerJobs.filter((job) => job.id !== jobId));
+      }
+
+      const previousEmployerCompanies = queryClient.getQueryData<CompanyWithStats[]>(["/api/employer/companies"]);
+      const previousPublicCompanies = queryClient.getQueryData<CompanyWithStats[]>(["/api/companies"]);
+
+      if (jobToDelete) {
+        if (previousEmployerCompanies) {
+          queryClient.setQueryData<CompanyWithStats[]>(["/api/employer/companies"], previousEmployerCompanies.map((company) => {
+            if (company.id === jobToDelete.companyId) {
+              const nextCount = Math.max(0, (company.jobCount ?? companyJobCounts[company.id] ?? 0) - 1);
+              return { ...company, jobCount: nextCount };
+            }
+            return company;
+          }));
+        }
+
+        if (previousPublicCompanies) {
+          queryClient.setQueryData<CompanyWithStats[]>(["/api/companies"], previousPublicCompanies.map((company) => {
+            if (company.id === jobToDelete.companyId) {
+              const nextCount = Math.max(0, (company.jobCount ?? 0) - 1);
+              return { ...company, jobCount: nextCount };
+            }
+            return company;
+          }));
+        }
+      }
+
+      return { previousEmployerJobs, previousEmployerCompanies, previousPublicCompanies };
+    },
+    onSuccess: (_, __, context) => {
+      toast({
+        title: "Job removed",
+        description: "The job listing has been removed.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/employer/jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/companies"] });
+      queryClient.refetchQueries({ queryKey: ["/api/employer/jobs"], type: "active" });
+      queryClient.refetchQueries({ queryKey: ["/api/jobs"], type: "active" });
+      queryClient.refetchQueries({ queryKey: ["/api/companies"], type: "active" });
+    },
+    onError: (error: Error, _jobId, context) => {
+      toast({
+        title: "Unable to delete job",
+        description: error.message,
+        variant: "destructive",
+      });
+      if (context?.previousEmployerJobs) {
+        queryClient.setQueryData(["/api/employer/jobs"], context.previousEmployerJobs);
+      }
+      if (context?.previousEmployerCompanies) {
+        queryClient.setQueryData(["/api/employer/companies"], context.previousEmployerCompanies);
+      }
+      if (context?.previousPublicCompanies) {
+        queryClient.setQueryData(["/api/companies"], context.previousPublicCompanies);
+      }
+    },
+    onSettled: () => {
+      setJobBeingDeleted(null);
+    },
+  });
+
+  const deleteCompanyMutation = useMutation({
+    mutationFn: async (companyId: string) => {
+      await apiRequest("DELETE", `/api/companies/${companyId}`);
+    },
+    onMutate: async (companyId: string) => {
+      setCompanyBeingDeleted(companyId);
+      await queryClient.cancelQueries({ queryKey: ["/api/employer/companies"] });
+      await queryClient.cancelQueries({ queryKey: ["/api/companies"] });
+
+      const previousEmployerCompanies = queryClient.getQueryData<CompanyWithStats[]>(["/api/employer/companies"]);
+      if (previousEmployerCompanies) {
+        queryClient.setQueryData<CompanyWithStats[]>(["/api/employer/companies"], previousEmployerCompanies.filter((company) => company.id !== companyId));
+      }
+
+      const previousPublicCompanies = queryClient.getQueryData<CompanyWithStats[]>(["/api/companies"]);
+      if (previousPublicCompanies) {
+        queryClient.setQueryData<CompanyWithStats[]>(["/api/companies"], previousPublicCompanies.filter((company) => company.id !== companyId));
+      }
+
+      return { previousEmployerCompanies, previousPublicCompanies };
+    },
+    onSuccess: () => {
+      toast({
+        title: "Company deleted",
+        description: "The company has been removed.",
+      });
+      if (editingCompany && companyBeingDeleted === editingCompany.id) {
+        closeEditCompany();
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/employer/companies"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/companies"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/employer/jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+      queryClient.refetchQueries({ queryKey: ["/api/employer/companies"], type: "active" });
+      queryClient.refetchQueries({ queryKey: ["/api/companies"], type: "active" });
+      queryClient.refetchQueries({ queryKey: ["/api/employer/jobs"], type: "active" });
+      queryClient.refetchQueries({ queryKey: ["/api/jobs"], type: "active" });
+    },
+    onError: (error: Error, _companyId, context) => {
+      toast({
+        title: "Unable to delete company",
+        description: error.message,
+        variant: "destructive",
+      });
+      if (context?.previousEmployerCompanies) {
+        queryClient.setQueryData(["/api/employer/companies"], context.previousEmployerCompanies);
+      }
+      if (context?.previousPublicCompanies) {
+        queryClient.setQueryData(["/api/companies"], context.previousPublicCompanies);
+      }
+    },
+    onSettled: () => {
+      setCompanyBeingDeleted(null);
+    },
+  });
+
+  const companyJobCounts = employerJobs.reduce<Record<string, number>>((acc, job) => {
+    if (job.status === 'active') {
+      acc[job.companyId] = (acc[job.companyId] || 0) + 1;
+    }
+    return acc;
+  }, {});
+
+  const openEditCompany = (company: CompanyWithStats) => {
+    setEditingCompany(company);
+    setEditCompanyData({
+      name: company.name ?? "",
+      description: company.description ?? "",
+      website: company.website ?? "",
+      location: company.location ?? "",
+      size: company.size ?? "",
+      logo: company.logo ?? "",
+    });
+    setIsEditCompanyOpen(true);
+  };
+
+  const closeEditCompany = () => {
+    setIsEditCompanyOpen(false);
+    setEditingCompany(null);
+    setEditCompanyData({
+      name: "",
+      description: "",
+      website: "",
+      location: "",
+      size: "",
+      logo: "",
+    });
+  };
+
+  const handleEditFieldChange = (field: keyof typeof editCompanyData, value: string) => {
+    setEditCompanyData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleEditCompanySubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingCompany) return;
+    updateCompanyMutation.mutate(editCompanyData);
+  };
+
+  const updateCompanyMutation = useMutation({
+    mutationFn: async (payload: typeof editCompanyData) => {
+      if (!editingCompany) {
+        throw new Error("No company selected");
+      }
+      const response = await apiRequest("PUT", `/api/companies/${editingCompany.id}`, payload);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Company updated",
+        description: "Your company information has been saved.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/employer/companies"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/companies"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/employer/jobs"] });
+      closeEditCompany();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Unable to update company",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   if (authLoading || !isAuthenticated) {
@@ -93,19 +334,35 @@ export default function Dashboard() {
                 Welcome back, {user?.firstName || user?.email || 'User'}
               </p>
             </div>
-            {isEmployer && (
-              <Link href="/post-job">
-                <Button data-testid="button-post-job" className="gap-2">
-                  <Plus className="w-4 h-4" />
-                  Post a Job
-                </Button>
-              </Link>
-            )}
-            {isAdmin && (
-              <Link href="/admin">
-                <Button data-testid="button-admin-panel">Admin Panel</Button>
-              </Link>
-            )}
+            <div className="flex items-center gap-2">
+              {isEmployer && (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => setIsCreateCompanyOpen(true)}
+                    disabled={!canCreateCompany}
+                    title={!canCreateCompany ? "You already created a company" : undefined}
+                    data-testid="button-add-company"
+                  >
+                    <Building2 className="h-4 w-4" />
+                    Add Company
+                  </Button>
+                  <Link href="/post-job">
+                    <Button data-testid="button-post-job" className="gap-2">
+                      <Plus className="w-4 h-4" />
+                      Post a Job
+                    </Button>
+                  </Link>
+                </>
+              )}
+              {isAdmin && (
+                <Link href="/admin">
+                  <Button data-testid="button-admin-panel">Admin Panel</Button>
+                </Link>
+              )}
+            </div>
           </div>
 
           {/* Stats Cards */}
@@ -194,11 +451,13 @@ export default function Dashboard() {
                     <CardTitle className="text-sm font-medium">Applications</CardTitle>
                     <Users className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-3">
                     <div className="text-2xl font-bold" data-testid="text-total-applications">
                       {stats?.totalApplications || employerJobs.reduce((sum, j) => sum + j.applyCount, 0)}
                     </div>
-                    <p className="text-xs text-muted-foreground">Total received</p>
+                    <Button asChild variant="outline" className="w-full" data-testid="button-view-applications">
+                      <Link href="/employer/applications">See Applications</Link>
+                    </Button>
                   </CardContent>
                 </Card>
                 <Card>
@@ -363,12 +622,77 @@ export default function Dashboard() {
                         <TableCell>{job.viewCount}</TableCell>
                         <TableCell>{job.applyCount}</TableCell>
                         <TableCell>
-                          <Link href={`/employer/jobs/${job.id}`}>
-                            <Button variant="ghost" size="sm">Manage</Button>
-                          </Link>
+                          <div className="flex gap-2">
+                            <Link href={`/jobs/${job.id}`}>
+                              <Button variant="ghost" size="sm">View</Button>
+                            </Link>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => deleteJobMutation.mutate(job.id)}
+                              disabled={deleteJobMutation.isPending && jobBeingDeleted === job.id}
+                            >
+                              {deleteJobMutation.isPending && jobBeingDeleted === job.id ? 'Deleting...' : 'Delete'}
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+
+          {isEmployer && employerCompanies.length > 0 && (
+            <Card className="mt-8">
+              <CardHeader>
+                <CardTitle>Your Company</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Open Roles</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {employerCompanies.map((company) => {
+                      const jobCount = company.jobCount ?? companyJobCounts[company.id] ?? 0;
+                      return (
+                        <TableRow key={company.id}>
+                          <TableCell className="font-medium">{company.name}</TableCell>
+                          <TableCell>{company.location || '—'}</TableCell>
+                          <TableCell>{jobCount}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Link href={`/companies/${company.slug}`}>
+                                <Button variant="ghost" size="sm">View</Button>
+                              </Link>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openEditCompany(company)}
+                              >
+                                <Pencil className="mr-1 h-3 w-3" />
+                                Edit
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => deleteCompanyMutation.mutate(company.id)}
+                                disabled={deleteCompanyMutation.isPending && companyBeingDeleted === company.id}
+                              >
+                                {deleteCompanyMutation.isPending && companyBeingDeleted === company.id ? 'Deleting...' : 'Delete'}
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -378,6 +702,96 @@ export default function Dashboard() {
       </main>
 
       <Footer />
+
+      <CompanyFormDialog
+        open={isCreateCompanyOpen}
+        onOpenChange={setIsCreateCompanyOpen}
+        onSuccess={() => setIsCreateCompanyOpen(false)}
+        title="Add Company"
+        description="Add your company information to start posting jobs."
+        submitLabel="Create Company"
+      />
+
+      <Dialog
+        open={isEditCompanyOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeEditCompany();
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Company</DialogTitle>
+            <DialogDescription>
+              Update your company information. Changes go live immediately.
+            </DialogDescription>
+          </DialogHeader>
+
+          {editingCompany && (
+            <form onSubmit={handleEditCompanySubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="edit-company-name">Company Name *</Label>
+                <Input
+                  id="edit-company-name"
+                  value={editCompanyData.name}
+                  onChange={(event) => handleEditFieldChange("name", event.target.value)}
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="edit-company-description">Description *</Label>
+                <Textarea
+                  id="edit-company-description"
+                  value={editCompanyData.description}
+                  onChange={(event) => handleEditFieldChange("description", event.target.value)}
+                  required
+                  className="min-h-[120px]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <Label htmlFor="edit-company-website">Website</Label>
+                  <Input
+                    id="edit-company-website"
+                    type="url"
+                    value={editCompanyData.website}
+                    onChange={(event) => handleEditFieldChange("website", event.target.value)}
+                    placeholder="https://example.com"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-company-location">Location</Label>
+                  <Input
+                    id="edit-company-location"
+                    value={editCompanyData.location}
+                    onChange={(event) => handleEditFieldChange("location", event.target.value)}
+                    placeholder="e.g. San Francisco, CA"
+                  />
+                </div>
+              </div>
+
+              <FileUpload
+                type="logo"
+                label="Company Logo"
+                currentFile={editCompanyData.logo}
+                onUploadComplete={(url) => handleEditFieldChange("logo", url)}
+              />
+
+              <DialogFooter className="gap-2">
+                <Button type="button" variant="outline" onClick={closeEditCompany}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={updateCompanyMutation.isPending}>
+                  {updateCompanyMutation.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, and, desc, like, gte, lte, sql, or } from "drizzle-orm";
+import { eq, and, desc, like, gte, lte, sql, or, inArray } from "drizzle-orm";
 import {
   users,
   companies,
@@ -16,6 +16,8 @@ import {
   type InsertUser,
   type Company,
   type InsertCompany,
+  type CompanyMember,
+  type InsertCompanyMember,
   type Job,
   type InsertJob,
   type Application,
@@ -27,11 +29,27 @@ import {
   type SavedSearch,
   type InsertSavedSearch,
   type Plan,
+  type InsertPlan,
   type Payment,
   type InsertPayment,
   type CreditLedger,
   type InsertCreditLedger,
 } from "@shared/schema";
+
+const DEFAULT_PRICING_PLANS: InsertPlan[] = [
+  // Normal tier
+  { name: "Normal - 7 Days", tier: "normal", price: 9900, visibilityDays: 7, credits: 1, isActive: true },
+  { name: "Normal - 14 Days", tier: "normal", price: 17900, visibilityDays: 14, credits: 2, isActive: true },
+  { name: "Normal - 30 Days", tier: "normal", price: 29900, visibilityDays: 30, credits: 3, isActive: true },
+  // Featured tier
+  { name: "Featured - 7 Days", tier: "featured", price: 19900, visibilityDays: 7, credits: 2, isActive: true },
+  { name: "Featured - 14 Days", tier: "featured", price: 34900, visibilityDays: 14, credits: 4, isActive: true },
+  { name: "Featured - 30 Days", tier: "featured", price: 59900, visibilityDays: 30, credits: 6, isActive: true },
+  // Premium tier
+  { name: "Premium - 7 Days", tier: "premium", price: 39900, visibilityDays: 7, credits: 4, isActive: true },
+  { name: "Premium - 14 Days", tier: "premium", price: 69900, visibilityDays: 14, credits: 7, isActive: true },
+  { name: "Premium - 30 Days", tier: "premium", price: 99900, visibilityDays: 30, credits: 10, isActive: true },
+];
 
 export interface IStorage {
   // Users
@@ -45,6 +63,9 @@ export interface IStorage {
   getCompanyBySlug(slug: string): Promise<Company | undefined>;
   listCompanies(filters?: { search?: string; isApproved?: boolean }): Promise<Company[]>;
   createCompany(company: InsertCompany): Promise<Company>;
+  deleteCompany(id: string): Promise<void>;
+  getCompanyMembership(userId: string, companyId: string): Promise<CompanyMember | undefined>;
+  addCompanyMember(member: InsertCompanyMember): Promise<CompanyMember>;
   updateCompany(id: string, updates: Partial<InsertCompany>): Promise<Company | undefined>;
   approveCompany(id: string): Promise<Company | undefined>;
   isCompanyMember(userId: string, companyId: string): Promise<boolean>;
@@ -75,6 +96,24 @@ export interface IStorage {
   listApplications(filters?: { userId?: string; jobId?: string; status?: string }): Promise<Application[]>;
   createApplication(application: InsertApplication): Promise<Application>;
   updateApplication(id: string, updates: Partial<InsertApplication>): Promise<Application | undefined>;
+  listEmployerApplications(userId: string): Promise<
+    Array<{
+      job: Job & { company?: Company };
+      applications: Array<{
+        id: string;
+        status: string;
+        coverLetter: string | null;
+        resumeUrl: string | null;
+        createdAt: Date;
+        applicant: {
+          id?: string;
+          email?: string;
+          firstName?: string;
+          lastName?: string;
+        };
+      }>;
+    }>
+  >;
 
   // Talent Profiles
   getTalentProfile(userId: string): Promise<TalentProfile | undefined>;
@@ -94,6 +133,7 @@ export interface IStorage {
   // Plans
   getPlan(id: string): Promise<Plan | undefined>;
   listPlans(filters?: { isActive?: boolean }): Promise<Plan[]>;
+  ensureDefaultPlans(): Promise<void>;
 
   // Payments
   createPayment(payment: InsertPayment): Promise<Payment>;
@@ -168,6 +208,51 @@ export class DbStorage implements IStorage {
   async createCompany(insertCompany: InsertCompany): Promise<Company> {
     const [company] = await db.insert(companies).values(insertCompany).returning();
     return company;
+  }
+
+  async deleteCompany(id: string): Promise<void> {
+    await db.delete(companies).where(eq(companies.id, id));
+  }
+
+  async getCompanyMembership(userId: string, companyId: string): Promise<CompanyMember | undefined> {
+    const [membership] = await db
+      .select()
+      .from(companyMembers)
+      .where(
+        and(
+          eq(companyMembers.userId, userId),
+          eq(companyMembers.companyId, companyId),
+        ),
+      );
+    return membership;
+  }
+
+  async addCompanyMember(insertCompanyMember: InsertCompanyMember): Promise<CompanyMember> {
+    const inserted = await db
+      .insert(companyMembers)
+      .values(insertCompanyMember)
+      .onConflictDoNothing()
+      .returning();
+
+    if (inserted.length > 0) {
+      return inserted[0]!;
+    }
+
+    const [existingMember] = await db
+      .select()
+      .from(companyMembers)
+      .where(
+        and(
+          eq(companyMembers.userId, insertCompanyMember.userId),
+          eq(companyMembers.companyId, insertCompanyMember.companyId),
+        ),
+      );
+
+    if (!existingMember) {
+      throw new Error("Failed to ensure company membership");
+    }
+
+    return existingMember;
   }
 
   async updateCompany(id: string, updates: Partial<InsertCompany>): Promise<Company | undefined> {
@@ -362,7 +447,6 @@ export class DbStorage implements IStorage {
 
   async createApplication(insertApplication: InsertApplication): Promise<Application> {
     const [application] = await db.insert(applications).values(insertApplication).returning();
-    await this.incrementJobApply(insertApplication.jobId);
     return application;
   }
 
@@ -373,6 +457,112 @@ export class DbStorage implements IStorage {
       .where(eq(applications.id, id))
       .returning();
     return application;
+  }
+
+  async listEmployerApplications(userId: string): Promise<
+    Array<{
+      job: Job & { company?: Company };
+      applications: Array<{
+        id: string;
+        status: string;
+        coverLetter: string | null;
+        resumeUrl: string | null;
+        createdAt: Date;
+        applicant: {
+          id?: string;
+          email?: string;
+          firstName?: string;
+          lastName?: string;
+        };
+      }>;
+    }>
+  > {
+    const companyIds = await this.getUserCompanyIds(userId);
+    if (companyIds.length === 0) {
+      return [];
+    }
+
+    const jobsForEmployer = await db
+      .select()
+      .from(jobs)
+      .where(inArray(jobs.companyId, companyIds));
+    if (jobsForEmployer.length === 0) {
+      return [];
+    }
+
+    const companyRows = await db
+      .select()
+      .from(companies)
+      .where(inArray(companies.id, companyIds));
+    const companyMap = new Map(companyRows.map((company) => [company.id, company]));
+
+    const jobMap = new Map<
+      string,
+      {
+        job: Job & { company?: Company };
+        applications: Array<{
+          id: string;
+          status: string;
+          coverLetter: string | null;
+          resumeUrl: string | null;
+          createdAt: Date;
+          applicant: {
+            id?: string;
+            email?: string;
+            firstName?: string;
+            lastName?: string;
+          };
+        }>;
+      }
+    >();
+
+    for (const job of jobsForEmployer) {
+      const company = companyMap.get(job.companyId);
+      jobMap.set(job.id, {
+        job: { ...job, company },
+        applications: [],
+      });
+    }
+
+    const jobIds = jobsForEmployer.map((job) => job.id);
+
+    const rows = await db
+      .select({
+        applicationId: applications.id,
+        status: applications.status,
+        coverLetter: applications.coverLetter,
+        resumeUrl: applications.resumeUrl,
+        createdAt: applications.createdAt,
+        jobId: applications.jobId,
+        applicantId: users.id,
+        applicantEmail: users.email,
+        applicantFirstName: users.firstName,
+        applicantLastName: users.lastName,
+      })
+      .from(applications)
+      .leftJoin(users, eq(applications.userId, users.id))
+      .where(inArray(applications.jobId, jobIds))
+      .orderBy(desc(applications.createdAt));
+
+    for (const row of rows) {
+      const entry = jobMap.get(row.jobId);
+      if (!entry) continue;
+      entry.applications.push({
+        id: row.applicationId,
+        status: row.status,
+        coverLetter: row.coverLetter,
+        resumeUrl: row.resumeUrl,
+        createdAt: row.createdAt,
+        applicant: {
+          id: row.applicantId ?? undefined,
+          email: row.applicantEmail ?? undefined,
+          firstName: row.applicantFirstName ?? undefined,
+          lastName: row.applicantLastName ?? undefined,
+        },
+      });
+    }
+
+    return Array.from(jobMap.values());
   }
 
   // Talent Profiles
@@ -443,6 +633,18 @@ export class DbStorage implements IStorage {
     }
 
     return query.orderBy(plans.price);
+  }
+
+  async ensureDefaultPlans(): Promise<void> {
+    const existing = await db.select({ name: plans.name }).from(plans);
+    const existingNames = new Set(existing.map((plan) => plan.name));
+    const missingPlans = DEFAULT_PRICING_PLANS.filter(
+      (plan) => !existingNames.has(plan.name),
+    );
+
+    if (missingPlans.length > 0) {
+      await db.insert(plans).values(missingPlans);
+    }
   }
 
   // Payments

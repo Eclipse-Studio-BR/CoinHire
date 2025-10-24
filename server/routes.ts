@@ -18,9 +18,46 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2025-09-30.clover',
 });
 
+const createCompanySchema = z.object({
+  name: z.string().min(1),
+  description: z.string().min(1),
+  website: z
+    .string()
+    .url()
+    .optional()
+    .or(z.literal("")),
+  location: z.string().optional().or(z.literal("")),
+  size: z.string().optional().or(z.literal("")),
+  logo: z.string().optional().or(z.literal("")),
+});
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-");
+}
+
+async function generateUniqueCompanySlug(name: string): Promise<string> {
+  const baseSlug = slugify(name) || `company-${Date.now()}`;
+  let slug = baseSlug;
+  let counter = 1;
+
+  // Ensure slug uniqueness
+  while (await storage.getCompanyBySlug(slug)) {
+    slug = `${baseSlug}-${counter}`;
+    counter += 1;
+  }
+
+  return slug;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes
   registerAuth(app);
+  await storage.ensureDefaultPlans();
 
   // ==================== Object Storage ====================
   // Based on blueprint:javascript_object_storage
@@ -206,9 +243,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'You do not have permission to post jobs for this company' });
       }
 
+      const now = new Date();
+      const visibilityDays = validatedData.visibilityDays ?? 30;
       const job = await storage.createJob({
         ...validatedData,
-        status: 'pending', // Requires admin approval
+        status: 'active',
+        tier: validatedData.tier ?? 'normal',
+        visibilityDays,
+        publishedAt: now,
+        expiresAt: new Date(now.getTime() + visibilityDays * 24 * 60 * 60 * 1000),
       });
 
       res.status(201).json(job);
@@ -329,7 +372,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isApproved: true, // Only show approved companies to public
       });
 
-      res.json(companiesList);
+      const companiesWithStats = await Promise.all(
+        companiesList.map(async (company) => {
+          const activeJobs = await storage.listJobs({
+            companyId: company.id,
+            status: 'active',
+          });
+
+          return {
+            ...company,
+            jobCount: activeJobs.length,
+          };
+        })
+      );
+
+      res.json(companiesWithStats);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -359,12 +416,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create company (employer only)
   app.post('/api/companies', requireRole('employer', 'recruiter'), async (req: Request, res: Response) => {
     try {
-      const validatedData = insertCompanySchema.parse(req.body);
+      const parsedData = createCompanySchema.parse(req.body);
+      const normalizedData = {
+        ...parsedData,
+        website: parsedData.website || undefined,
+        location: parsedData.location || undefined,
+        size: parsedData.size || undefined,
+        logo: parsedData.logo || undefined,
+      };
+
+      const user = await storage.getUser(req.session.userId!);
+      const existingCompanyIds = await storage.getUserCompanyIds(req.session.userId!);
+      if (existingCompanyIds.length > 0 && user?.role !== 'admin') {
+        return res.status(400).json({ error: 'Employers can only create one company' });
+      }
+
+      const slug = await generateUniqueCompanySlug(parsedData.name);
 
       const company = await storage.createCompany({
-        ...validatedData,
-        isApproved: false, // Requires admin approval
+        ...normalizedData,
+        slug,
+        isApproved: true,
         isHiring: true,
+      });
+
+      await storage.addCompanyMember({
+        companyId: company.id,
+        userId: req.session.userId!,
+        isOwner: true,
       });
 
       res.status(201).json(company);
@@ -402,17 +481,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete company (owner or admin)
+  app.delete('/api/companies/:id', requireRole('employer', 'recruiter', 'admin'), async (req: Request, res: Response) => {
+    try {
+      const company = await storage.getCompany(req.params.id);
+      if (!company) {
+        return res.status(404).json({ error: 'Company not found' });
+      }
+
+      const membership = await storage.getCompanyMembership(req.session.userId!, req.params.id);
+      const user = await storage.getUser(req.session.userId!);
+
+      const isOwner = membership?.isOwner ?? false;
+      const isAdmin = user?.role === 'admin';
+
+      if (!isOwner && !isAdmin) {
+        return res.status(403).json({ error: 'Only company owners can delete this company' });
+      }
+
+      await storage.deleteCompany(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Get employer's companies
   app.get('/api/employer/companies', requireRole('employer', 'recruiter'), async (req: Request, res: Response) => {
     try {
       // Get company IDs user is a member of
       const userCompanyIds = await storage.getUserCompanyIds(req.session.userId!);
       
-      // Get full company data for user's companies
-      const companiesList = await storage.listCompanies({ isApproved: true });
-      const userCompanies = companiesList.filter(c => userCompanyIds.includes(c.id));
+      if (userCompanyIds.length === 0) {
+        return res.json([]);
+      }
+
+      const companiesList = await Promise.all(
+        userCompanyIds.map(async (companyId) => storage.getCompany(companyId)),
+      );
+
+      const userCompanies = companiesList
+        .filter((company): company is NonNullable<typeof company> => Boolean(company));
+
+      const companiesWithStats = await Promise.all(
+        userCompanies.map(async (company) => {
+          const activeJobs = await storage.listJobs({
+            companyId: company.id,
+            status: 'active',
+          });
+
+          return {
+            ...company,
+            jobCount: activeJobs.length,
+          };
+        }),
+      );
       
-      res.json(userCompanies);
+      res.json(companiesWithStats);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -430,7 +555,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get all jobs from user's companies
       const jobsList = await storage.listJobs({});
-      const userJobs = jobsList.filter(job => userCompanyIds.includes(job.companyId));
+      const userJobs = jobsList
+        .filter(job => userCompanyIds.includes(job.companyId))
+        .filter(job => job.status !== 'expired');
       
       // Enrich with company and application data
       const jobsWithData = await Promise.all(
@@ -442,6 +569,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       
       res.json(jobsWithData);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/employer/applications', requireRole('employer', 'recruiter'), async (req: Request, res: Response) => {
+    try {
+      const employerApplications = await storage.listEmployerApplications(req.session.userId!);
+      res.json(employerApplications);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

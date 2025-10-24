@@ -1,11 +1,11 @@
 // Based on blueprint:javascript_object_storage
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import Uppy from "@uppy/core";
 import { DashboardModal } from "@uppy/react";
 import AwsS3 from "@uppy/aws-s3";
 import type { UploadResult } from "@uppy/core";
-import { Button } from "@/components/ui/button";
+import { Button, type ButtonProps } from "@/components/ui/button";
 
 interface ObjectUploaderProps {
   maxNumberOfFiles?: number;
@@ -19,7 +19,7 @@ interface ObjectUploaderProps {
     result: UploadResult<Record<string, unknown>, Record<string, unknown>>
   ) => void;
   buttonClassName?: string;
-  buttonVariant?: "default" | "outline" | "secondary" | "ghost" | "link" | "destructive";
+  buttonVariant?: ButtonProps["variant"];
   children: ReactNode;
 }
 
@@ -34,6 +34,13 @@ export function ObjectUploader({
   children,
 }: ObjectUploaderProps) {
   const [showModal, setShowModal] = useState(false);
+
+  const accessibleLabel = useMemo(() => {
+    if (typeof children === "string") {
+      return children;
+    }
+    return "Upload file";
+  }, [children]);
   const [uppy] = useState(() =>
     new Uppy({
       restrictions: {
@@ -53,9 +60,18 @@ export function ObjectUploader({
       })
   );
 
+  const openUploader = () => setShowModal(true);
+
   return (
-    <div>
-      <Button onClick={() => setShowModal(true)} className={buttonClassName} variant={buttonVariant} type="button" data-testid="button-upload">
+    <div className="flex items-center justify-center">
+      <Button
+        onClick={openUploader}
+        className={buttonClassName}
+        variant={buttonVariant}
+        type="button"
+        data-testid="button-upload"
+        aria-label={accessibleLabel}
+      >
         {children}
       </Button>
 

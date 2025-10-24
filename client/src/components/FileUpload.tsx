@@ -1,19 +1,33 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { FileText, X } from "lucide-react";
+import { FileText, Upload, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { ObjectUploader } from "./ObjectUploader";
-import type { UploadResult } from "@uppy/core";
 
 interface FileUploadProps {
-  type: 'resume' | 'logo';
+  type: "resume" | "logo";
   onUploadComplete: (url: string) => void;
   currentFile?: string;
   label?: string;
   className?: string;
 }
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+const MIME_TYPES: Record<"resume" | "logo", string[]> = {
+  resume: [
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ],
+  logo: ["image/png", "image/jpeg", "image/webp", "image/svg+xml"],
+};
+
+const ACCEPT_EXTENSIONS: Record<"resume" | "logo", string> = {
+  resume: ".pdf,.doc,.docx",
+  logo: ".png,.jpg,.jpeg,.webp,.svg",
+};
 
 export function FileUpload({
   type,
@@ -23,121 +37,132 @@ export function FileUpload({
   className,
 }: FileUploadProps) {
   const [uploadedFile, setUploadedFile] = useState<string | undefined>(currentFile);
-  const [uploading, setUploading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  const handleGetUploadParameters = async () => {
-    const response = await apiRequest("POST", "/api/objects/upload");
-    const data = await response.json();
-    return {
-      method: "PUT" as const,
-      url: data.uploadURL,
-    };
+  const resetInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
-  const handleComplete = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
-    try {
-      setUploading(true);
-      
-      if (!result.successful || result.successful.length === 0) {
-        throw new Error("Upload failed");
-      }
+  const handleFileSelection = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-      const uploadedUrl = result.successful[0].uploadURL;
-      
-      // Set ACL policy and get normalized path
-      const aclEndpoint = type === 'resume' ? '/api/objects/resume' : '/api/objects/logo';
-      const aclKey = type === 'resume' ? 'resumeURL' : 'logoURL';
-      
-      const response = await apiRequest("PUT", aclEndpoint, {
-        [aclKey]: uploadedUrl,
-      });
-      const data = await response.json();
-      
-      setUploadedFile(data.objectPath);
-      onUploadComplete(data.objectPath);
-      
+    if (!MIME_TYPES[type].includes(file.type)) {
       toast({
-        title: "Upload Successful",
-        description: `Your ${type} has been uploaded.`,
+        title: "Unsupported file type",
+        description:
+          type === "resume"
+            ? "Please upload a PDF or Word document."
+            : "Please upload an image (PNG, JPG, WEBP, or SVG).",
+        variant: "destructive",
+      });
+      resetInput();
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      toast({
+        title: "File too large",
+        description: "The maximum file size is 5MB.",
+        variant: "destructive",
+      });
+      resetInput();
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+
+      const formData = new FormData();
+      formData.append(type, file);
+
+      const uploadEndpoint = type === "resume" ? "/api/upload/resume" : "/api/upload/logo";
+      const { url } = await apiRequest("POST", uploadEndpoint, formData).then((res) => res.json());
+
+      setUploadedFile(url);
+      onUploadComplete(url);
+
+      toast({
+        title: "Upload complete",
+        description: `Your ${type === "resume" ? "résumé" : "logo"} has been uploaded.`,
       });
     } catch (error: any) {
       toast({
-        title: "Upload Failed",
-        description: error.message || "An error occurred during upload",
+        title: "Upload failed",
+        description: error?.message ?? "An unexpected error occurred during upload.",
         variant: "destructive",
       });
     } finally {
-      setUploading(false);
+      setIsUploading(false);
+      resetInput();
     }
+  };
+
+  const openFilePicker = () => {
+    fileInputRef.current?.click();
   };
 
   const handleRemove = () => {
     setUploadedFile(undefined);
     onUploadComplete("");
+    resetInput();
   };
-
-  // File type restrictions
-  const allowedFileTypes = type === 'resume' 
-    ? ['.pdf', '.doc', '.docx'] 
-    : ['.png', '.jpg', '.jpeg', '.webp', '.svg'];
 
   return (
     <div className={className}>
       {label && <Label className="mb-2 block">{label}</Label>}
-      
+
       {uploadedFile ? (
-        <div className="flex items-center gap-3 p-4 border rounded-md bg-card">
-          {type === 'resume' ? (
-            <FileText className="w-8 h-8 text-primary" />
+        <div className="flex items-center gap-3 rounded-md border bg-card p-4">
+          {type === "resume" ? (
+            <FileText className="h-8 w-8 text-primary" />
           ) : (
-            <img 
-              src={uploadedFile} 
-              alt="Uploaded file" 
-              className="w-12 h-12 object-cover rounded"
-            />
+            <img src={uploadedFile} alt="Uploaded logo" className="h-12 w-12 rounded object-cover" />
           )}
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <p className="text-sm font-medium">
-              {type === 'resume' ? 'Resume uploaded' : 'Logo uploaded'}
+              {type === "resume" ? "Resume uploaded" : "Logo uploaded"}
             </p>
-            <p className="text-xs text-muted-foreground truncate max-w-xs">{uploadedFile}</p>
+            <p className="mt-1 truncate text-xs text-muted-foreground">{uploadedFile}</p>
           </div>
           <Button
             type="button"
-            size="icon"
             variant="ghost"
+            size="icon"
             onClick={handleRemove}
             data-testid="button-remove-file"
           >
-            <X className="w-4 h-4" />
+            <X className="h-4 w-4" />
           </Button>
         </div>
       ) : (
-        <div className="border-2 border-dashed rounded-md p-6 text-center hover:border-primary transition-colors">
-          <ObjectUploader
-            maxNumberOfFiles={1}
-            maxFileSize={5242880} // 5MB
-            allowedFileTypes={allowedFileTypes}
-            onGetUploadParameters={handleGetUploadParameters}
-            onComplete={handleComplete}
-            buttonVariant="ghost"
-            buttonClassName="w-full h-auto p-0 hover:bg-transparent"
+        <div className="rounded-md border border-dashed p-6 text-center">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ACCEPT_EXTENSIONS[type]}
+            className="hidden"
+            onChange={handleFileSelection}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={openFilePicker}
+            disabled={isUploading}
+            className="mx-auto flex items-center gap-2"
           >
-            <div className="flex flex-col items-center gap-2 py-2">
-              <FileText className="w-8 h-8 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">
-                  {uploading ? 'Processing...' : `Click to upload ${type}`}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {type === 'resume' 
-                    ? 'PDF or DOC (max 5MB)' 
-                    : 'PNG, JPG, WEBP, or SVG (max 5MB)'}
-                </p>
-              </div>
-            </div>
-          </ObjectUploader>
+            <Upload className="h-4 w-4" />
+            {isUploading ? "Uploading…" : `Click to upload ${type === "resume" ? "resume" : "logo"}`}
+          </Button>
+          <p className="mt-3 text-xs text-muted-foreground">
+            {type === "resume"
+              ? "Accepted formats: PDF, DOC, DOCX (max 5MB)"
+              : "Accepted formats: PNG, JPG, WEBP, SVG (max 5MB)"}
+          </p>
         </div>
       )}
     </div>

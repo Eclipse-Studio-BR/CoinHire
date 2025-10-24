@@ -11,14 +11,28 @@ import {
 import { Briefcase, Building2, User, LogOut, Settings, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { getInitials } from "@/lib/utils";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import type { Company } from "@shared/schema";
 
 export function Navbar() {
   const { user, isAuthenticated } = useAuth();
   const [location] = useLocation();
   const { toast } = useToast();
+
+  const { data: employerCompanies = [] } = useQuery<(Company & { jobCount?: number })[]>({
+    queryKey: ["/api/employer/companies"],
+    enabled: isAuthenticated && user?.role === "employer",
+    retry: false,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnReconnect: "always",
+    refetchOnWindowFocus: "always",
+  });
+
+  const primaryCompany = employerCompanies[0];
+  const companyLink = primaryCompany ? `/companies/${primaryCompany.slug}` : "/companies";
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
@@ -116,7 +130,7 @@ export function Navbar() {
                   )}
                   {user?.role === 'employer' && (
                     <DropdownMenuItem asChild>
-                      <Link href="/company" className="flex items-center w-full" data-testid="link-company">
+                      <Link href={companyLink} className="flex items-center w-full" data-testid="link-company">
                         <Building2 className="mr-2 h-4 w-4" />
                         <span>My Company</span>
                       </Link>
