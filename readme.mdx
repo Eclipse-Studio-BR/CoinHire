@@ -1,0 +1,228 @@
+⸻
+
+⸻
+
+title: Crypto Job Board
+description: A Web3-friendly job board with React, Express, Drizzle (Postgres), and Stripe.
+
+Crypto Job Board (Web3-ready)
+
+A production-ready job board tailored for crypto & Web3 roles. It ships a modern React front-end, a TypeScript Express API, Stripe-based paid postings/credits, and a PostgreSQL schema via Drizzle ORM. File uploads (resumes, logos) are supported via Google Cloud Storage (Replit sidecar by default).
+
+Monorepo layout: client/ (Vite + React), server/ (Express + Stripe + Drizzle), shared/ (DB schema & types).
+
+⸻
+
+✨ Features
+	•	Jobs marketplace
+	•	Post, edit, publish, expire jobs; tiers: Normal, Featured, Premium
+	•	Visibility windows (7 / 14 / 30 days)
+	•	Salary ranges + currency, job type, seniority, on-site/remote
+	•	Company directory & detail pages
+	•	Search & filters (keyword, company, category, location, remote, salary, job type, level)
+	•	Saved jobs & saved searches
+	•	Applications
+	•	In-app apply with resume upload
+	•	Cover letter, basic profile, tracking of views and applications
+	•	Billing / Credits
+	•	Stripe Checkout (+ Webhook) provisions credits and visibility days
+	•	Pricing plans (Normal/Featured/Premium) with a credit ledger
+	•	Accounts & Roles
+	•	Roles: job-seeker, employer/recruiter, admin
+	•	Profile & settings pages
+	•	Admin
+	•	Basic admin dashboard and stats
+	•	Modern UI/UX
+	•	Tailwind CSS + shadcn/ui + Radix primitives
+	•	Routing with wouter
+	•	State & data via TanStack Query
+
+⸻
+
+🧱 Tech Stack
+	•	Frontend: React 18, TypeScript, Vite, Tailwind, shadcn/ui, wouter, TanStack Query, lucide-react
+	•	Backend: Node.js + Express (TypeScript)
+	•	Database: Postgres + Drizzle ORM (@neondatabase/serverless compatible)
+	•	Payments: Stripe (Checkout + Webhooks)
+	•	Uploads/Files: Google Cloud Storage via Replit sidecar (can be swapped to standard GCS/S3)
+	•	Build: esbuild (server) + Vite (client)
+
+⸻
+
+📁 Repository Structure
+
+.
+├─ client/                # Vite React app (UI)
+│  ├─ public/             # Static assets
+│  └─ src/
+│     ├─ components/      # UI components (includes shadcn/ui)
+│     ├─ hooks/
+│     ├─ lib/             # utils, constants, QueryClient
+│     └─ pages/           # Landing, Jobs, JobDetail, Companies, Dashboard, PostJob, Pricing, Checkout, Profile, Settings, RoleSelection, AdminPanel
+├─ server/                # Express API (TypeScript)
+│  ├─ db.ts               # Neon + Drizzle client
+│  ├─ index.ts            # App entry (dev/prod)
+│  ├─ routes.ts           # REST endpoints (jobs, companies, apps, billing, objects)
+│  ├─ storage.ts          # DB access layer
+│  ├─ upload.ts           # Multer upload config
+│  ├─ objectStorage.ts    # GCS sidecar client + signed URLs + ACL
+│  ├─ objectAcl.ts        # Object visibility/ACL utilities
+│  ├─ replitAuth.ts       # Replit OIDC helpers (optional outside Replit)
+│  ├─ vite.ts             # Dev server integration / static serving
+│  └─ seed.ts             # Database seeding
+├─ shared/                # Drizzle schema & Zod models
+│  └─ schema.ts
+├─ drizzle.config.ts      # Drizzle Kit configuration
+├─ vite.config.ts         # Vite config (client root + dist/public)
+├─ .env.example           # Required env vars
+└─ package.json           # Scripts (dev/build/start, db:push)
+
+
+⸻
+
+⚙️ Prerequisites
+	•	Node.js v18+
+	•	A Postgres database (e.g., Neon)
+	•	A Stripe account (test mode is fine)
+
+⸻
+
+🔐 Environment Variables
+
+Copy .env.example → .env and fill in:
+
+Variable	Description
+DATABASE_URL	Postgres connection string (Neon works great)
+SESSION_SECRET	Any long random string for session signing
+STRIPE_SECRET_KEY	Your Stripe Secret key (sk_...)
+VITE_STRIPE_PUBLIC_KEY	Your Stripe Publishable key (pk_...)
+STRIPE_WEBHOOK_SECRET	Webhook signing secret (whsec_...)
+
+Outside Replit: either disable upload-dependent features temporarily or replace server/objectStorage.ts with standard GCS/S3 credentials.
+
+⸻
+
+🛠️ Install & Run (Local)
+
+# 1) Install
+npm install
+
+# 2) Create .env
+cp .env.example .env
+# then edit .env with your own values
+
+# 3) Create / migrate the database schema
+npm run db:push
+
+# 4) (Optional) Seed with example data
+npx tsx server/seed.ts
+
+# 5) Start in development
+npm run dev
+# → serves API + Vite dev client (default http://localhost:3000)
+
+# 6) Production build
+npm run build     # builds client to dist/public and bundles server to dist/
+npm start         # runs Node on dist/index.js
+
+The dev server wires Vite to Express (see server/vite.ts).
+
+⸻
+
+🔌 API (Overview)
+
+See server/routes.ts for the full list. Highlights:
+
+	•	Auth & Roles: helpers in server/replitAuth.ts (requireAuth, requireRole(...)). Outside Replit, stub or swap to your provider.
+	•	Companies: create/update, get by slug/id, list with jobs.
+	•	Jobs: create/update/publish, list with filters, detail, counters (views/apps), saved jobs/searches.
+	•	Applications: submit + store + resume upload, list by job/user.
+	•	Billing: /api/checkout → Stripe session; /api/stripe-webhook → provisions credits/visibility.
+	•	Objects / Uploads:
+	•	POST /api/objects/upload → presigned URL for client-side uploads
+	•	PUT  /api/objects/logo and PUT /api/objects/resume → finalize + set ACL
+	•	GET  /public-objects/:filePath(*) → public serving of allowed objects
+
+⸻
+
+🧾 Stripe Webhooks
+	1.	Set STRIPE_SECRET_KEY and VITE_STRIPE_PUBLIC_KEY.
+	2.	Deploy (or expose dev URL with stripe listen).
+	3.	In Stripe Dashboard → Developers → Webhooks:
+	•	Endpoint: POST https://<your-domain>/api/stripe-webhook
+	•	Events: checkout.session.completed (plus others if needed)
+	•	Secret → use as STRIPE_WEBHOOK_SECRET
+
+⸻
+
+☁️ Deploy to Vercel
+
+This repo targets a single Node function for the Express API + static client hosting.
+
+1) Create api/index.ts (wrap Express; no app.listen)
+
+// api/index.ts
+import session from "express-session";
+import pgSession from "connect-pg-simple";
+import express from "express";
+import { pool } from "../server/db";
+import { registerRoutes } from "../server/routes";
+import { serveStatic } from "../server/vite";
+
+const app = express();
+const PgSession = pgSession(session);
+app.use(session({
+  store: new PgSession({ pool }),
+  secret: process.env.SESSION_SECRET!,
+  resave: false,
+  saveUninitialized: false,
+}));
+
+await registerRoutes(app);
+export default app; // no app.listen() on Vercel
+
+2) Create vercel.json (build + rewrites)
+
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist/public",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index" },
+    { "source": "/(.*)", "destination": "/" }
+  ]
+}
+
+3) Project Settings on Vercel
+	•	Build Command: npm run build
+	•	Output Directory: dist/public
+	•	Env Vars: DATABASE_URL, SESSION_SECRET, STRIPE_SECRET_KEY, VITE_STRIPE_PUBLIC_KEY, STRIPE_WEBHOOK_SECRET
+
+4) Database & Webhook
+	•	Run npm run db:push once against your Neon database.
+	•	Point Stripe webhook to POST /api/stripe-webhook.
+
+Uploads on Vercel: Swap server/objectStorage.ts to standard GCS (service account) or S3/R2 and adjust signing logic.
+
+⸻
+
+🧪 Seeding
+
+Populate example users, companies, jobs, and plans:
+
+npx tsx server/seed.ts
+
+
+⸻
+
+🗺️ Roadmap (suggested)
+	•	Replace Replit OIDC with a public provider (Clerk/Auth.js) when not on Replit
+	•	Swap sidecar storage to GCS/S3 for non-Replit deploys
+	•	Email notifications for saved searches
+	•	Admin UI polish & audit logs
+	•	Analytics for CTR / apply conversion
+
+⸻
+
+📄 License
+
+MIT — see package.json.
