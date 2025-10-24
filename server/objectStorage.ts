@@ -3,6 +3,7 @@ import { Storage, File } from "@google-cloud/storage";
 import { Response } from "express";
 import { randomUUID } from "crypto";
 import {
+  ObjectAccessGroupType,
   ObjectAclPolicy,
   ObjectPermission,
   canAccessObject,
@@ -202,6 +203,51 @@ export class ObjectStorageService {
 
     const objectFile = await this.getObjectEntityFile(normalizedPath);
     await setObjectAclPolicy(objectFile, aclPolicy);
+    return normalizedPath;
+  }
+
+  async grantCompanyReadAccess(
+    rawPath: string,
+    companyId: string,
+  ): Promise<string> {
+    const normalizedPath = this.normalizeObjectEntityPath(rawPath);
+    if (!normalizedPath.startsWith("/objects/")) {
+      return normalizedPath;
+    }
+
+    const objectFile = await this.getObjectEntityFile(normalizedPath);
+    const aclPolicy = await getObjectAclPolicy(objectFile);
+    if (!aclPolicy) {
+      return normalizedPath;
+    }
+
+    const hasRule = (aclPolicy.aclRules ?? []).some(
+      (rule) =>
+        rule.group.type === ObjectAccessGroupType.COMPANY_MEMBERS &&
+        rule.group.id === companyId &&
+        [ObjectPermission.READ, ObjectPermission.WRITE].includes(
+          rule.permission,
+        ),
+    );
+
+    if (!hasRule) {
+      const updatedPolicy: ObjectAclPolicy = {
+        ...aclPolicy,
+        aclRules: [
+          ...(aclPolicy.aclRules ?? []),
+          {
+            group: {
+              type: ObjectAccessGroupType.COMPANY_MEMBERS,
+              id: companyId,
+            },
+            permission: ObjectPermission.READ,
+          },
+        ],
+      };
+
+      await setObjectAclPolicy(objectFile, updatedPolicy);
+    }
+
     return normalizedPath;
   }
 

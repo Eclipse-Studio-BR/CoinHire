@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
+import { getInitials } from "@/lib/utils";
 import { Loader2, Settings, LogOut } from "lucide-react";
 import { Link } from "wouter";
 
 export default function Profile() {
   const { user, isLoading } = useAuth();
+  const profileImageUrl: string | undefined = user?.profileImageUrl ?? undefined;
 
   if (isLoading) {
     return (
@@ -47,16 +49,6 @@ export default function Profile() {
     );
   }
 
-  const getInitials = (firstName?: string, lastName?: string, email?: string) => {
-    if (firstName && lastName) {
-      return `${firstName[0]}${lastName[0]}`.toUpperCase();
-    }
-    if (email) {
-      return email[0].toUpperCase();
-    }
-    return "U";
-  };
-
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
       case 'admin':
@@ -92,9 +84,9 @@ export default function Profile() {
               <CardContent>
                 <div className="flex items-start gap-6 flex-col sm:flex-row">
                   <Avatar className="h-24 w-24">
-                    <AvatarImage src={user.profileImageUrl} alt={user.email} />
+                    <AvatarImage src={profileImageUrl} alt={user.email} />
                     <AvatarFallback className="text-2xl">
-                      {getInitials(user.firstName, user.lastName, user.email)}
+                      {getInitials(user.firstName ?? undefined, user.lastName ?? undefined, user.email ?? undefined)}
                     </AvatarFallback>
                   </Avatar>
 

@@ -18,6 +18,8 @@ interface JobCardProps {
 export function JobCard({ job, onSave, isSaved }: JobCardProps) {
   const isPremium = job.tier === 'premium';
   const isFeatured = job.tier === 'featured';
+  const companyLogo: string | undefined = job.company?.logo ?? undefined;
+  const companyName: string | undefined = job.company?.name ?? undefined;
 
   return (
     <Card
@@ -37,9 +39,13 @@ export function JobCard({ job, onSave, isSaved }: JobCardProps) {
       <div className="flex gap-4">
         <Link href={`/companies/${job.company?.slug || job.companyId}`}>
           <Avatar className="h-12 w-12" data-testid="avatar-company">
-            <AvatarImage src={job.company?.logo || undefined} alt={job.company?.name} className="object-cover" />
+            <AvatarImage
+              src={companyLogo}
+              alt={companyName}
+              className="object-cover"
+            />
             <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-              {job.company?.name?.slice(0, 2).toUpperCase() || 'CO'}
+              {companyName?.slice(0, 2)?.toUpperCase() || 'CO'}
             </AvatarFallback>
           </Avatar>
         </Link>
@@ -55,7 +61,7 @@ export function JobCard({ job, onSave, isSaved }: JobCardProps) {
               <Link href={`/companies/${job.company?.slug || job.companyId}`}>
                 <p className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1" data-testid="text-company-name">
                   <Building2 className="w-4 h-4" />
-                  {job.company?.name || 'Company'}
+                  {companyName || 'Company'}
                 </p>
               </Link>
             </div>
@@ -70,7 +76,7 @@ export function JobCard({ job, onSave, isSaved }: JobCardProps) {
             </Badge>
             {job.salaryMin || job.salaryMax ? (
               <Badge variant="outline" className="text-xs" data-testid="badge-salary">
-                {formatSalary(job.salaryMin, job.salaryMax, job.salaryCurrency)}
+                {formatSalary(job.salaryMin, job.salaryMax, job.salaryCurrency ?? undefined)}
               </Badge>
             ) : null}
             {job.category && (

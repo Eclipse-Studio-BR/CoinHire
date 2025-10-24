@@ -124,6 +124,8 @@ export default function JobDetail() {
 
   const isPremium = job?.tier === 'premium';
   const isFeatured = job?.tier === 'featured';
+  const companyLogo: string | undefined = job?.company?.logo ?? undefined;
+  const companyName: string | undefined = job?.company?.name ?? undefined;
 
   if (isLoading) {
     return (
@@ -172,13 +174,13 @@ export default function JobDetail() {
                       <Link href={`/companies/${job.company?.slug || job.companyId}`}>
                         <div className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors">
                           <Avatar className="h-12 w-12">
-                            <AvatarImage src={job.company?.logo || undefined} className="object-cover" />
+                            <AvatarImage src={companyLogo} className="object-cover" />
                             <AvatarFallback className="bg-primary/10 text-primary">
-                              {job.company?.name?.slice(0, 2).toUpperCase() || 'CO'}
+                              {companyName?.slice(0, 2)?.toUpperCase() || 'CO'}
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="font-medium text-lg" data-testid="text-company-name">{job.company?.name}</p>
+                            <p className="font-medium text-lg" data-testid="text-company-name">{companyName}</p>
                             {job.company?.location && (
                               <p className="text-sm flex items-center gap-1">
                                 <MapPin className="w-3 h-3" />
@@ -209,7 +211,7 @@ export default function JobDetail() {
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <DollarSign className="w-4 h-4 text-muted-foreground" />
-                      <span data-testid="text-salary">{formatSalary(job.salaryMin, job.salaryMax, job.salaryCurrency)}</span>
+                      <span data-testid="text-salary">{formatSalary(job.salaryMin, job.salaryMax, job.salaryCurrency ?? undefined)}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <Clock className="w-4 h-4 text-muted-foreground" />

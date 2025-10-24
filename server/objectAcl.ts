@@ -1,10 +1,12 @@
 // Based on blueprint:javascript_object_storage
 import { File } from "@google-cloud/storage";
+import { storage } from "./storage";
 
 const ACL_POLICY_METADATA_KEY = "custom:aclPolicy";
 
-// For our job board, we don't need complex ACL groups yet
-export enum ObjectAccessGroupType {}
+export enum ObjectAccessGroupType {
+  COMPANY_MEMBERS = "company_members",
+}
 
 export interface ObjectAccessGroup {
   type: ObjectAccessGroupType;
@@ -46,10 +48,31 @@ abstract class BaseObjectAccessGroup implements ObjectAccessGroup {
   public abstract hasMember(userId: string): Promise<boolean>;
 }
 
+class CompanyMembersAccessGroup extends BaseObjectAccessGroup {
+  constructor(companyId: string) {
+    super(ObjectAccessGroupType.COMPANY_MEMBERS, companyId);
+  }
+
+  public async hasMember(userId: string): Promise<boolean> {
+    const [isMember, user] = await Promise.all([
+      storage.isCompanyMember(userId, this.id),
+      storage.getUser(userId),
+    ]);
+
+    if (isMember) {
+      return true;
+    }
+
+    return user?.role === "admin";
+  }
+}
+
 function createObjectAccessGroup(
   group: ObjectAccessGroup,
 ): BaseObjectAccessGroup {
   switch (group.type) {
+    case ObjectAccessGroupType.COMPANY_MEMBERS:
+      return new CompanyMembersAccessGroup(group.id);
     default:
       throw new Error(`Unknown access group type: ${group.type}`);
   }

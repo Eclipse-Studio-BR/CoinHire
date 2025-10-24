@@ -31,6 +31,14 @@ import { CompanyFormDialog } from "@/components/CompanyFormDialog";
 type ApplicationWithJob = Application & { job?: Job & { company?: Company } };
 type SavedJobWithDetails = SavedJob & { job?: Job & { company?: Company } };
 type CompanyWithStats = Company & { jobCount?: number };
+type DashboardStats = {
+  applicationsCount?: number;
+  savedJobsCount?: number;
+  activeJobsCount?: number;
+  totalViews?: number;
+  totalApplications?: number;
+  creditsBalance?: number;
+};
 
 export default function Dashboard() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
@@ -63,7 +71,7 @@ export default function Dashboard() {
     }
   }, [isAuthenticated, authLoading, toast, setLocation]);
 
-  const { data: stats } = useQuery({
+  const { data: stats } = useQuery<DashboardStats | null>({
     queryKey: ["/api/dashboard/stats"],
     enabled: isAuthenticated,
   });

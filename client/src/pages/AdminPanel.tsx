@@ -22,6 +22,12 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Job, Company } from "@shared/schema";
 
+type AdminStats = {
+  totalJobs: number;
+  totalCompanies: number;
+  totalUsers: number;
+};
+
 export default function AdminPanel() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const { toast } = useToast();
@@ -50,7 +56,7 @@ export default function AdminPanel() {
     enabled: isAuthenticated && user?.role === 'admin',
   });
 
-  const { data: stats } = useQuery({
+  const { data: stats } = useQuery<AdminStats>({
     queryKey: ["/api/admin/stats"],
     enabled: isAuthenticated && user?.role === 'admin',
   });

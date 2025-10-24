@@ -77,14 +77,30 @@ export function FileUpload({
     try {
       setIsUploading(true);
 
-      const formData = new FormData();
-      formData.append(type, file);
+      const { uploadURL } = await apiRequest("POST", "/api/objects/upload")
+        .then((res) => res.json());
 
-      const uploadEndpoint = type === "resume" ? "/api/upload/resume" : "/api/upload/logo";
-      const { url } = await apiRequest("POST", uploadEndpoint, formData).then((res) => res.json());
+      const uploadResponse = await fetch(uploadURL, {
+        method: "PUT",
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+        },
+        body: file,
+      });
 
-      setUploadedFile(url);
-      onUploadComplete(url);
+      if (!uploadResponse.ok) {
+        const message = await uploadResponse.text();
+        throw new Error(message || "Upload failed");
+      }
+
+      const finalizeEndpoint = type === "resume" ? "/api/objects/resume" : "/api/objects/logo";
+      const payload = type === "resume" ? { resumeURL: uploadURL } : { logoURL: uploadURL };
+      const { objectPath } = await apiRequest("PUT", finalizeEndpoint, payload).then((res) =>
+        res.json(),
+      );
+
+      setUploadedFile(objectPath);
+      onUploadComplete(objectPath);
 
       toast({
         title: "Upload complete",

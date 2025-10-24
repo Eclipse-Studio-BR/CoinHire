@@ -5,7 +5,6 @@ import { registerAuth, requireAuth, requireRole } from "./auth";
 import { insertJobSchema, insertCompanySchema, insertApplicationSchema } from "@shared/schema";
 import { z } from "zod";
 import Stripe from "stripe";
-import { upload } from "./upload";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import "./types";
@@ -350,6 +349,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         resumeUrl: req.body.resumeUrl,
         status: 'submitted',
       });
+
+      if (req.body.resumeUrl) {
+        try {
+          const objectStorageService = new ObjectStorageService();
+          await objectStorageService.grantCompanyReadAccess(
+            req.body.resumeUrl,
+            job.companyId,
+          );
+        } catch (error) {
+          console.error("Error granting company resume access:", error);
+        }
+      }
 
       // Increment application count
       await storage.incrementJobApply(req.params.id);
@@ -758,36 +769,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const stats = await storage.getDashboardStats(user.id, user.role);
       res.json(stats);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // ==================== File Uploads ====================
-
-  // Upload resume
-  app.post('/api/upload/resume', requireAuth, upload.single('resume'), async (req: Request, res: Response) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ error: 'No file uploaded' });
-      }
-      
-      const fileUrl = `/uploads/resumes/${req.file.filename}`;
-      res.json({ url: fileUrl, filename: req.file.filename });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Upload company logo
-  app.post('/api/upload/logo', requireAuth, upload.single('logo'), async (req: Request, res: Response) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ error: 'No file uploaded' });
-      }
-      
-      const fileUrl = `/uploads/logos/${req.file.filename}`;
-      res.json({ url: fileUrl, filename: req.file.filename });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
