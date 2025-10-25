@@ -8,6 +8,10 @@ import Stripe from "stripe";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import "./types";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import { randomUUID } from "crypto";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe key: STRIPE_SECRET_KEY');
@@ -53,10 +57,72 @@ async function generateUniqueCompanySlug(name: string): Promise<string> {
   return slug;
 }
 
+const LOCAL_UPLOADS_ROOT = path.resolve(process.cwd(), "uploads");
+const LOCAL_LOGO_DIR = path.join(LOCAL_UPLOADS_ROOT, "logos");
+
+function ensureDirExists(dir: string) {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+}
+
+const LOGO_MIME_TYPES = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
+const LOGO_EXTENSION_FALLBACK: Record<string, string> = {
+  "image/png": ".png",
+  "image/jpeg": ".jpg",
+  "image/webp": ".webp",
+  "image/svg+xml": ".svg",
+};
+
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+
+const localLogoUploader = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => {
+      ensureDirExists(LOCAL_LOGO_DIR);
+      cb(null, LOCAL_LOGO_DIR);
+    },
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname) || LOGO_EXTENSION_FALLBACK[file.mimetype] || "";
+      cb(null, `${Date.now()}-${randomUUID()}${ext}`);
+    },
+  }),
+  fileFilter: (_req, file, cb) => {
+    if (LOGO_MIME_TYPES.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Unsupported file type"));
+    }
+  },
+  limits: {
+    fileSize: MAX_UPLOAD_BYTES,
+  },
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes
   registerAuth(app);
   await storage.ensureDefaultPlans();
+  const isObjectStorageConfigured = Boolean(process.env.PRIVATE_OBJECT_DIR);
+
+  if (!isObjectStorageConfigured) {
+    app.post(
+      "/api/uploads/logo",
+      requireAuth,
+      localLogoUploader.single("file"),
+      (req, res) => {
+        if (!req.file) {
+          return res.status(400).json({ error: "Missing file upload" });
+        }
+        const publicPath = `/uploads/logos/${path.basename(req.file.path)}`;
+        return res.status(200).json({ objectPath: publicPath });
+      },
+    );
+  } else {
+    app.post("/api/uploads/logo", requireAuth, (_req, res) => {
+      return res.status(503).json({ error: "Direct uploads are disabled" });
+    });
+  }
 
   // ==================== Object Storage ====================
   // Based on blueprint:javascript_object_storage

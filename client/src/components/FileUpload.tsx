@@ -47,6 +47,66 @@ export function FileUpload({
     }
   };
 
+  const isObjectStorageMisconfigured = (error: unknown) => {
+    const message =
+      typeof error === "string"
+        ? error
+        : error instanceof Error
+          ? error.message
+          : "";
+    return (
+      message.includes("PRIVATE_OBJECT_DIR") ||
+      message.includes("PUBLIC_OBJECT_SEARCH_PATHS")
+    );
+  };
+
+  const uploadViaObjectStorage = async (file: File): Promise<string> => {
+    const { uploadURL } = await apiRequest("POST", "/api/objects/upload").then((res) => res.json());
+
+    const uploadResponse = await fetch(uploadURL, {
+      method: "PUT",
+      headers: {
+        "Content-Type": file.type || "application/octet-stream",
+      },
+      body: file,
+    });
+
+    if (!uploadResponse.ok) {
+      const message = await uploadResponse.text();
+      throw new Error(message || "Upload failed");
+    }
+
+    const finalizeEndpoint = type === "resume" ? "/api/objects/resume" : "/api/objects/logo";
+    const payload = type === "resume" ? { resumeURL: uploadURL } : { logoURL: uploadURL };
+    const { objectPath } = await apiRequest("PUT", finalizeEndpoint, payload).then((res) =>
+      res.json(),
+    );
+
+    return objectPath;
+  };
+
+  const uploadViaLocalEndpoint = async (file: File): Promise<string> => {
+    if (type !== "logo") {
+      throw new Error("Local uploads are only supported for company logos.");
+    }
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch("/api/uploads/logo", {
+      method: "POST",
+      body: formData,
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || "Upload failed");
+    }
+
+    const { objectPath } = await response.json();
+    return objectPath;
+  };
+
   const handleFileSelection = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -77,27 +137,16 @@ export function FileUpload({
     try {
       setIsUploading(true);
 
-      const { uploadURL } = await apiRequest("POST", "/api/objects/upload")
-        .then((res) => res.json());
-
-      const uploadResponse = await fetch(uploadURL, {
-        method: "PUT",
-        headers: {
-          "Content-Type": file.type || "application/octet-stream",
-        },
-        body: file,
-      });
-
-      if (!uploadResponse.ok) {
-        const message = await uploadResponse.text();
-        throw new Error(message || "Upload failed");
+      let objectPath: string;
+      try {
+        objectPath = await uploadViaObjectStorage(file);
+      } catch (error) {
+        if (isObjectStorageMisconfigured(error)) {
+          objectPath = await uploadViaLocalEndpoint(file);
+        } else {
+          throw error;
+        }
       }
-
-      const finalizeEndpoint = type === "resume" ? "/api/objects/resume" : "/api/objects/logo";
-      const payload = type === "resume" ? { resumeURL: uploadURL } : { logoURL: uploadURL };
-      const { objectPath } = await apiRequest("PUT", finalizeEndpoint, payload).then((res) =>
-        res.json(),
-      );
 
       setUploadedFile(objectPath);
       onUploadComplete(objectPath);
