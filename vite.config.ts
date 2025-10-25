@@ -6,7 +6,19 @@ import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 export default defineConfig({
   plugins: [
     react(),
-    runtimeErrorOverlay(),
+    runtimeErrorOverlay({
+      filter(error) {
+        // Ignore runtime errors originating from browser extensions (e.g. MetaMask)
+        // so that the dev overlay only shows app-related issues.
+        if (error.message?.includes("Cannot redefine property: ethereum")) {
+          return false;
+        }
+        if (error.stack?.includes("chrome-extension://")) {
+          return false;
+        }
+        return true;
+      },
+    }),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [

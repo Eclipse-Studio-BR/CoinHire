@@ -261,10 +261,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         level,
         remote,
         companyId,
+        tier,  
+        location,
       } = req.query;
 
       const filters: any = {
-        status: 'active', // Only show active jobs to public
+        status: 'active', 
       };
 
       if (search) filters.search = search as string;
@@ -273,10 +275,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (level && level !== 'all') filters.experienceLevel = level as string;
       if (remote === 'true') filters.isRemote = true;
       if (companyId) filters.companyId = companyId as string;
+      if (tier) filters.tier = tier as string;  
 
       const jobsList = await storage.listJobs(filters);
 
-      // Enrich with company data
       const jobsWithCompanies = await Promise.all(
         jobsList.map(async (job) => {
           const company = await storage.getCompany(job.companyId);

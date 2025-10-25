@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -13,7 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import { JOB_CATEGORIES, JOB_TYPES, EXPERIENCE_LEVELS } from "@/lib/constants";
@@ -26,12 +25,43 @@ export default function Jobs() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedType, setSelectedType] = useState<string>("");
   const [selectedLevel, setSelectedLevel] = useState<string>("");
-  const [remoteOnly, setRemoteOnly] = useState(false);
+  const [jobLocation, setJobLocation] = useState<string>(""); // ← city/location
+
+  // Initialize filters from URL params (supports ?search=, ?category=, ?type=, ?level=, ?location=)
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      const params = url.searchParams;
+      const q   = params.get("search") || params.get("q");
+      const cat = params.get("category");
+      const typ = params.get("type");
+      const lvl = params.get("level");
+      const loc = params.get("location");
+      if (q)  setSearchTerm(q);
+      if (cat) setSelectedCategory(cat);
+      if (typ) setSelectedType(typ);
+      if (lvl) setSelectedLevel(lvl);
+      if (loc) setJobLocation(loc);
+    } catch {
+      /* no-op */
+    }
+  }, []);
+
   const [sortBy, setSortBy] = useState<string>("recent");
   const [showFilters, setShowFilters] = useState(true);
 
   const { data: jobs = [], isLoading } = useQuery<JobWithCompany[]>({
-    queryKey: ["/api/jobs", { search: searchTerm, category: selectedCategory, type: selectedType, level: selectedLevel, remote: remoteOnly, sort: sortBy }],
+    queryKey: [
+      "/api/jobs",
+      {
+        search: searchTerm,
+        category: selectedCategory,
+        type: selectedType,
+        level: selectedLevel,
+        location: jobLocation, 
+        sort: sortBy,
+      },
+    ],
   });
 
   const clearFilters = () => {
@@ -39,7 +69,7 @@ export default function Jobs() {
     setSelectedCategory("");
     setSelectedType("");
     setSelectedLevel("");
-    setRemoteOnly(false);
+    setJobLocation("");
   };
 
   return (
@@ -54,7 +84,7 @@ export default function Jobs() {
               Find Web3 Jobs
             </h1>
             <p className="text-muted-foreground">
-              {jobs.length} {jobs.length === 1 ? 'opportunity' : 'opportunities'} available
+              {jobs.length} {jobs.length === 1 ? "opportunity" : "opportunities"} available
             </p>
           </div>
 
@@ -80,7 +110,7 @@ export default function Jobs() {
                   className="gap-2"
                 >
                   <SlidersHorizontal className="w-4 h-4" />
-                  {showFilters ? 'Hide' : 'Show'} Filters
+                  {showFilters ? "Hide" : "Show"} Filters
                 </Button>
                 <Select value={sortBy} onValueChange={setSortBy}>
                   <SelectTrigger className="w-40" data-testid="select-sort-by">
@@ -117,6 +147,20 @@ export default function Jobs() {
                   </div>
 
                   <div className="space-y-6">
+                    {/* Location / City */}
+                    <div>
+                      <Label htmlFor="filter-location" className="mb-3 block">
+                        Location / City
+                      </Label>
+                      <Input
+                        id="filter-location"
+                        placeholder="e.g., Remote, New York, London"
+                        value={jobLocation}
+                        onChange={(e) => setJobLocation(e.target.value)}
+                        data-testid="input-filter-location"
+                      />
+                    </div>
+
                     <div>
                       <Label className="mb-3 block">Category</Label>
                       <Select value={selectedCategory} onValueChange={setSelectedCategory}>
@@ -126,7 +170,9 @@ export default function Jobs() {
                         <SelectContent>
                           <SelectItem value="all">All categories</SelectItem>
                           {JOB_CATEGORIES.map((cat) => (
-                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                            <SelectItem key={cat} value={cat}>
+                              {cat}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -141,7 +187,9 @@ export default function Jobs() {
                         <SelectContent>
                           <SelectItem value="all">All types</SelectItem>
                           {Object.entries(JOB_TYPES).map(([key, value]) => (
-                            <SelectItem key={key} value={key}>{value}</SelectItem>
+                            <SelectItem key={key} value={key}>
+                              {value}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -156,22 +204,12 @@ export default function Jobs() {
                         <SelectContent>
                           <SelectItem value="all">All levels</SelectItem>
                           {Object.entries(EXPERIENCE_LEVELS).map(([key, value]) => (
-                            <SelectItem key={key} value={key}>{value}</SelectItem>
+                            <SelectItem key={key} value={key}>
+                              {value}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="remote"
-                        checked={remoteOnly}
-                        onCheckedChange={(checked) => setRemoteOnly(checked as boolean)}
-                        data-testid="checkbox-remote-only"
-                      />
-                      <Label htmlFor="remote" className="cursor-pointer">
-                        Remote only
-                      </Label>
                     </div>
                   </div>
                 </Card>
