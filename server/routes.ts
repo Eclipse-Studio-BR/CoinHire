@@ -109,12 +109,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     app.post(
       "/api/uploads/logo",
       requireAuth,
-      localLogoUploader.single("file"),
+      (req, res, next) => {
+        localLogoUploader.single("file")(req, res, (err) => {
+          if (err) {
+            console.error("Logo upload error:", err);
+            if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+              return res.status(413).json({ error: "Logo file exceeds the 5MB limit." });
+            }
+            return res.status(400).json({ error: err.message || "Upload failed" });
+          }
+          next();
+        });
+      },
       (req, res) => {
-        if (!req.file) {
+        const file = (req as Request & { file?: Express.Multer.File }).file;
+        if (!file) {
           return res.status(400).json({ error: "Missing file upload" });
         }
-        const publicPath = `/uploads/logos/${path.basename(req.file.path)}`;
+        const publicPath = `/uploads/logos/${path.basename(file.path)}`;
         return res.status(200).json({ objectPath: publicPath });
       },
     );
