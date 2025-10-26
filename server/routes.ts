@@ -661,30 +661,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete company (owner or admin)
-  app.delete('/api/companies/:id', requireRole('employer', 'recruiter', 'admin'), async (req: Request, res: Response) => {
-    try {
-      const company = await storage.getCompany(req.params.id);
-      if (!company) {
-        return res.status(404).json({ error: 'Company not found' });
-      }
-
-      const membership = await storage.getCompanyMembership(req.session.userId!, req.params.id);
-      const user = await storage.getUser(req.session.userId!);
-
-      const isOwner = membership?.isOwner ?? false;
-      const isAdmin = user?.role === 'admin';
-
-      if (!isOwner && !isAdmin) {
-        return res.status(403).json({ error: 'Only company owners can delete this company' });
-      }
-
-      await storage.deleteCompany(req.params.id);
-      res.json({ success: true });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
+app.delete('/api/companies/:id', requireRole('admin'), async (req, res) => {
+  try {
+    const company = await storage.getCompany(req.params.id);
+    if (!company) {
+      return res.status(404).json({ error: 'Company not found' });
     }
-  });
+
+    const user = await storage.getUser(req.session.userId!);
+    const isAdmin = user?.role === 'admin';
+
+    if (!isAdmin) {
+      return res.status(403).json({ error: 'Only admins can delete companies' });
+    }
+
+    await storage.deleteCompany(req.params.id);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
   // Get employer's companies
   app.get('/api/employer/companies', requireRole('employer', 'recruiter'), async (req: Request, res: Response) => {

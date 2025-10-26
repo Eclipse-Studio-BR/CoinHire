@@ -15,7 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { PublicUser, TalentProfile } from "@shared/schema";
+import type { PublicUser, TalentProfile, Company } from "@shared/schema";
 import { Loader2 } from "lucide-react";
 import { TIMEZONES } from "@/lib/timezones";
 
@@ -23,6 +23,8 @@ const profileFormSchema = z.object({
   firstName: z.string().max(100, "First name must be 100 characters or less").optional(),
   lastName: z.string().max(100, "Last name must be 100 characters or less").optional(),
   profileImageUrl: z.string().max(500, "Profile image URL is too long").optional(),
+  // shown only for employers but safe to include in schema
+  companyDescription: z.string().max(2000, "Description is too long").optional(),
 });
 
 const passwordFormSchema = z.object({
@@ -51,6 +53,7 @@ const EMPTY_PROFILE_VALUES: ProfileFormValues = {
   firstName: "",
   lastName: "",
   profileImageUrl: "",
+  companyDescription: "",
 };
 
 const EMPTY_PASSWORD_VALUES: PasswordFormValues = {
@@ -73,7 +76,9 @@ const EMPTY_TALENT_PROFILE_VALUES: TalentProfileFormValues = {
 
 export default function Settings() {
   const { user } = useAuth();
-  const isTalent = user?.role === 'talent';
+  const isTalent = user?.role === "talent";
+  const isEmployer = user?.role === "employer";
+  const settingsTitle = isTalent ? "Profile Settings" : "Company Settings";
   const { toast } = useToast();
 
   const profileForm = useForm<ProfileFormValues>({
@@ -91,14 +96,29 @@ export default function Settings() {
     defaultValues: EMPTY_TALENT_PROFILE_VALUES,
   });
 
+  // Employer: load the single company
+  const { data: companies = [], isLoading: companiesLoading } = useQuery<Company[]>({
+    queryKey: ["/api/employer/companies"],
+    enabled: isEmployer,
+  });
+  const myCompany = companies?.[0];
+
   const { data: talentProfile, isLoading: talentProfileLoading } = useQuery<TalentProfile | null>({
     queryKey: ["/api/talent/profile"],
     enabled: isTalent,
   });
 
+  // prime defaults
   useEffect(() => {
     profileForm.reset(buildProfileDefaults(user));
   }, [user, profileForm]);
+
+  // when company arrives, set description into the same form block
+  useEffect(() => {
+    if (isEmployer) {
+      profileForm.setValue("companyDescription", myCompany?.description ?? "");
+    }
+  }, [isEmployer, myCompany, profileForm]);
 
   useEffect(() => {
     if (isTalent) {
@@ -108,23 +128,37 @@ export default function Settings() {
 
   const profileMutation = useMutation({
     mutationFn: async (values: ProfileFormValues) => {
-      const response = await apiRequest("PUT", "/api/auth/profile", values);
+      const response = await apiRequest("PUT", "/api/auth/profile", {
+        firstName: values.firstName ?? "",
+        lastName: values.lastName ?? "",
+        profileImageUrl: values.profileImageUrl ?? "",
+      });
       return (await response.json()) as PublicUser;
     },
     onSuccess: async (updatedUser) => {
-      toast({
-        title: "Profile updated",
-        description: "Your account details have been saved.",
+      toast({ title: "Profile updated", description: "Your account details have been saved." });
+      profileForm.reset({
+        ...buildProfileDefaults(updatedUser),
+        companyDescription: profileForm.getValues("companyDescription") ?? "",
       });
-      profileForm.reset(buildProfileDefaults(updatedUser));
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Unable to update profile",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Unable to update profile", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // separate mutation for company description (called from the same Save button)
+  const companyMutation = useMutation({
+    mutationFn: async ({ id, description }: { id: string; description: string }) => {
+      await apiRequest("PUT", `/api/companies/${id}`, { description });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/employer/companies"] });
+      toast({ title: "Company updated", description: "Description saved." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Unable to update company", description: error.message, variant: "destructive" });
     },
   });
 
@@ -133,18 +167,11 @@ export default function Settings() {
       await apiRequest("PUT", "/api/auth/password", values);
     },
     onSuccess: () => {
-      toast({
-        title: "Password updated",
-        description: "Use your new password next time you sign in.",
-      });
+      toast({ title: "Password updated", description: "Use your new password next time you sign in." });
       passwordForm.reset(EMPTY_PASSWORD_VALUES);
     },
     onError: (error: Error) => {
-      toast({
-        title: "Unable to update password",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Unable to update password", description: error.message, variant: "destructive" });
     },
   });
 
@@ -164,28 +191,32 @@ export default function Settings() {
       });
     },
     onSuccess: async () => {
-      toast({
-        title: "Talent profile updated",
-        description: "Your story and rates are up to date.",
-      });
+      toast({ title: "Talent profile updated", description: "Your story and rates are up to date." });
       await queryClient.invalidateQueries({ queryKey: ["/api/talent/profile"] });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Unable to update talent profile",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Unable to update talent profile", description: error.message, variant: "destructive" });
     },
   });
+
   const talentFormDisabled = talentProfileLoading || talentProfileMutation.isPending;
+  const savingProfile = profileMutation.isPending || companyMutation.isPending;
+  const canSubmitProfile = profileForm.formState.isDirty && !savingProfile && (!isEmployer || !companiesLoading);
 
   const handleProfileSubmit = (values: ProfileFormValues) => {
+    // update user profile
     profileMutation.mutate({
       firstName: values.firstName ?? "",
       lastName: values.lastName ?? "",
       profileImageUrl: values.profileImageUrl ?? "",
     });
+    // also update company description if employer
+    if (isEmployer && myCompany) {
+      companyMutation.mutate({
+        id: String(myCompany.id),
+        description: values.companyDescription ?? "",
+      });
+    }
   };
 
   const handlePasswordSubmit = (values: PasswordFormValues) => {
@@ -204,7 +235,7 @@ export default function Settings() {
         <div className="container mx-auto px-4 py-10 max-w-4xl">
           <div className="mb-10 space-y-2">
             <p className="text-sm font-medium text-primary">Account</p>
-            <h1 className="text-3xl md:text-4xl font-bold">Settings</h1>
+            <h1 className="text-3xl md:text-4xl font-bold">{settingsTitle}</h1>
             <p className="text-muted-foreground max-w-2xl">
               Update how your profile appears across Web3 Jobs and keep your account secure with a stronger password.
             </p>
@@ -272,6 +303,7 @@ export default function Settings() {
                             )}
                           />
                         </div>
+
                         <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
                           {user?.email ? (
                             <>
@@ -285,18 +317,45 @@ export default function Settings() {
                       </div>
                     </div>
 
+                    {/* Employer-only: company description in the SAME block */}
+                    {isEmployer && (
+                      <FormField
+                        control={profileForm.control}
+                        name="companyDescription"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Company description</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                rows={4}
+                                placeholder="Tell candidates about your mission, culture, and products."
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormDescription>This appears on your company page.</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
                     <div className="flex flex-wrap justify-end gap-3">
                       <Button
                         type="button"
                         variant="ghost"
-                        disabled={!profileForm.formState.isDirty || profileMutation.isPending}
-                        onClick={() => profileForm.reset(buildProfileDefaults(user ?? null))}
+                        disabled={!profileForm.formState.isDirty || savingProfile}
+                        onClick={() =>
+                          profileForm.reset({
+                            ...buildProfileDefaults(user ?? null),
+                            companyDescription: myCompany?.description ?? "",
+                          })
+                        }
                       >
                         Cancel
                       </Button>
-                      <Button type="submit" disabled={!profileForm.formState.isDirty || profileMutation.isPending}>
-                        {profileMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {profileMutation.isPending ? "Saving" : "Save changes"}
+                      <Button type="submit" disabled={!canSubmitProfile}>
+                        {savingProfile && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {savingProfile ? "Saving" : "Save changes"}
                       </Button>
                     </div>
                   </form>
@@ -567,14 +626,12 @@ function buildProfileDefaults(user: PublicUser | null): ProfileFormValues {
     firstName: user?.firstName ?? "",
     lastName: user?.lastName ?? "",
     profileImageUrl: user?.profileImageUrl ?? "",
+    companyDescription: "",
   };
 }
 
 function buildTalentProfileDefaults(profile: TalentProfile | null | undefined): TalentProfileFormValues {
-  if (!profile) {
-    return EMPTY_TALENT_PROFILE_VALUES;
-  }
-
+  if (!profile) return EMPTY_TALENT_PROFILE_VALUES;
   return {
     title: profile.headline ?? "",
     story: profile.bio ?? "",
