@@ -48,6 +48,7 @@ function Router() {
       {/* Job routes */}
       <Route path="/jobs" component={Jobs} />
       <Route path="/jobs/:id" component={JobDetail} />
+      <Route path="/jobs/:id/edit" component={PostJob} />
       
       {/* Company routes */}
       <Route path="/companies" component={Companies} />

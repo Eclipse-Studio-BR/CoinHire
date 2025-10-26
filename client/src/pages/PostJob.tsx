@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useRoute } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -22,14 +22,21 @@ import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { JOB_CATEGORIES, JOB_TYPES, EXPERIENCE_LEVELS } from "@/lib/constants";
-import { insertJobSchema, type Company } from "@shared/schema";
+import { type Company } from "@shared/schema";
 import { Plus } from "lucide-react";
 import { CompanyFormDialog } from "@/components/CompanyFormDialog";
 
 export default function PostJob() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
+
+  // ---- Edit mode detection ---------------------------------------------------
+  const [match, params] = useRoute('/jobs/:id/edit');
+  const isEdit = Boolean(match && params?.id);
+  const editJobId = isEdit ? String(params!.id) : null;
+
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -54,10 +61,13 @@ export default function PostJob() {
   });
 
   useEffect(() => {
-    if (!authLoading && (!isAuthenticated || (user?.role !== 'employer' && user?.role !== 'recruiter'))) {
+    if (
+      !authLoading &&
+      (!isAuthenticated || (user?.role !== 'employer' && user?.role !== 'recruiter'))
+    ) {
       toast({
         title: "Unauthorized",
-        description: "Only employers can post jobs.",
+        description: "Only employers can post or edit jobs.",
         variant: "destructive",
       });
       setTimeout(() => {
@@ -66,6 +76,7 @@ export default function PostJob() {
     }
   }, [isAuthenticated, authLoading, user, toast, setLocation]);
 
+  // ---- Employer companies (for create flow) ---------------------------------
   type EmployerCompany = Company & { jobCount?: number };
   const { data: companies = [] } = useQuery<EmployerCompany[]>({
     queryKey: ["/api/employer/companies"],
@@ -78,56 +89,106 @@ export default function PostJob() {
   const hasSingleCompany = companies.length === 1;
   const primaryCompany = hasSingleCompany ? companies[0] : null;
 
-useEffect(() => {
-  if (primaryCompany) {
-    setSelectedCompanyId(primaryCompany.id);
-  } else {
-    setSelectedCompanyId("");
-  }
-}, [primaryCompany]);
+  useEffect(() => {
+    if (primaryCompany) {
+      setSelectedCompanyId(primaryCompany.id);
+    } else {
+      setSelectedCompanyId("");
+    }
+  }, [primaryCompany]);
 
-useEffect(() => {
-  if (companies.length > 1 && !selectedCompanyId) {
-    setSelectedCompanyId(companies[0]!.id);
-  }
-}, [companies, selectedCompanyId]);
+  useEffect(() => {
+    if (companies.length > 1 && !selectedCompanyId) {
+      setSelectedCompanyId(companies[0]!.id);
+    }
+  }, [companies, selectedCompanyId]);
 
+  // ---- Load existing job on edit --------------------------------------------
+  const { data: existingJob, isLoading: loadingJob } = useQuery<any>({
+    queryKey: ['/api/jobs', editJobId],
+    enabled: !!editJobId,
+    queryFn: async () => (await apiRequest("GET", `/api/jobs/${editJobId}`)).json(),
+  });
+
+  // Prefill the form once the job is loaded
+  useEffect(() => {
+    if (isEdit && existingJob) {
+      // lock company to the job's company
+      setSelectedCompanyId(existingJob.companyId);
+
+      setFormData((prev) => ({
+        ...prev,
+        title: existingJob.title ?? '',
+        description: existingJob.description ?? '',
+        requirements: existingJob.requirements ?? '',
+        responsibilities: existingJob.responsibilities ?? '',
+        category: existingJob.category ?? '',
+        location: existingJob.location ?? '',
+        isRemote: !!existingJob.isRemote,
+        salaryMin: existingJob.salaryMin != null ? String(existingJob.salaryMin) : '',
+        salaryMax: existingJob.salaryMax != null ? String(existingJob.salaryMax) : '',
+        jobType: existingJob.jobType ?? prev.jobType,
+        experienceLevel: existingJob.experienceLevel ?? prev.experienceLevel,
+        tier: existingJob.tier ?? prev.tier,
+        externalUrl: existingJob.externalUrl ?? '',
+        tags: Array.isArray(existingJob.tags) ? existingJob.tags.join(', ') : '',
+        visibilityDays: existingJob.visibilityDays ?? prev.visibilityDays,
+        salaryCurrency: existingJob.salaryCurrency ?? prev.salaryCurrency,
+        salaryPeriod: existingJob.salaryPeriod ?? prev.salaryPeriod,
+        applicationMethod: existingJob.applicationMethod ?? prev.applicationMethod,
+        applicationEmail: existingJob.applicationEmail ?? '',
+        applicationUrl:
+          existingJob.applicationMethod === 'external'
+            ? (existingJob.externalUrl ?? '')
+            : '',
+      }));
+    }
+  }, [isEdit, existingJob]);
+
+  // ---- Mutations -------------------------------------------------------------
   const postJobMutation = useMutation({
     mutationFn: async (data: any) => {
       const response = await apiRequest("POST", "/api/jobs", data);
       return response.json();
     },
     onSuccess: (data) => {
-      toast({
-        title: "Job Posted",
-        description: "Your job has been submitted for review.",
-      });
+      toast({ title: "Job Posted", description: "Your job has been submitted for review." });
       setLocation(`/jobs/${data.id}`);
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
-      toast({
-        title: "Unauthorized",
-        description: "Please sign in to post jobs.",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        setLocation("/login");
-      }, 500);
-      return;
+        toast({ title: "Unauthorized", description: "Please sign in to post jobs.", variant: "destructive" });
+        setTimeout(() => setLocation("/login"), 500);
+        return;
       }
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateJobMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await apiRequest("PUT", `/api/jobs/${editJobId}`, data);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Job Updated", description: "Your changes have been saved." });
+      setLocation(`/jobs/${data.id}`);
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({ title: "Unauthorized", description: "Please sign in to update jobs.", variant: "destructive" });
+        setTimeout(() => setLocation("/login"), 500);
+        return;
+      }
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!primaryCompany && !selectedCompanyId) {
+    // In create flow, ensure a company exists/selected
+    if (!isEdit && !primaryCompany && !selectedCompanyId) {
       toast({
         title: "Select a company",
         description: "Create your company before posting a job.",
@@ -155,7 +216,7 @@ useEffect(() => {
     }
 
     const jobData = {
-      companyId: primaryCompany ? primaryCompany.id : selectedCompanyId,
+      companyId: isEdit ? existingJob?.companyId : (primaryCompany ? primaryCompany.id : selectedCompanyId),
       title: formData.title,
       description: formData.description,
       requirements: formData.requirements || undefined,
@@ -180,20 +241,26 @@ useEffect(() => {
       visibilityDays: formData.visibilityDays,
     };
 
-    postJobMutation.mutate(jobData);
+    if (isEdit) {
+      updateJobMutation.mutate(jobData);
+    } else {
+      postJobMutation.mutate(jobData);
+    }
   };
 
-  if (authLoading || !isAuthenticated) {
+  if (authLoading || !isAuthenticated || (isEdit && loadingJob)) {
     return (
       <div className="flex flex-col min-h-screen">
         <Navbar />
         <div className="flex-1 flex items-center justify-center">
-          <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full"></div>
+          <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full" />
         </div>
         <Footer />
       </div>
     );
   }
+
+  const isSaving = postJobMutation.isPending || updateJobMutation.isPending;
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -203,10 +270,10 @@ useEffect(() => {
         <div className="container mx-auto px-4 py-8 max-w-4xl">
           <div className="mb-8">
             <h1 className="text-3xl md:text-4xl font-bold mb-2" data-testid="text-page-title">
-              Post a Job
+              {isEdit ? "Edit Job" : "Post a Job"}
             </h1>
             <p className="text-muted-foreground">
-              Fill out the form below to post your job opportunity
+              {isEdit ? "Update your job listing details" : "Fill out the form below to post your job opportunity"}
             </p>
           </div>
 
@@ -215,13 +282,22 @@ useEffect(() => {
               <CardHeader>
                 <CardTitle>Company</CardTitle>
                 <CardDescription>
-                  {hasSingleCompany && primaryCompany
-                    ? "Jobs will be posted under your company."
-                    : "Create your company before posting jobs"}
+                  {isEdit
+                    ? "This job is tied to the company below."
+                    : hasSingleCompany && primaryCompany
+                      ? "Jobs will be posted under your company."
+                      : "Create your company before posting jobs"}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {companies.length === 0 ? (
+                {isEdit && existingJob?.company ? (
+                  <div className="rounded-md border bg-muted/30 p-4">
+                    <p className="text-sm font-medium">{existingJob.company.name}</p>
+                    {existingJob.company.location && (
+                      <p className="text-xs text-muted-foreground">{existingJob.company.location}</p>
+                    )}
+                  </div>
+                ) : companies.length === 0 ? (
                   <div className="space-y-4">
                     <p className="text-sm text-muted-foreground">
                       Create your company before posting a job.
@@ -267,13 +343,15 @@ useEffect(() => {
                   </>
                 )}
 
-                <CompanyFormDialog
-                  open={showCreateCompany}
-                  onOpenChange={setShowCreateCompany}
-                  onSuccess={(company) => {
-                    setSelectedCompanyId(company.id);
-                  }}
-                />
+                {!isEdit && (
+                  <CompanyFormDialog
+                    open={showCreateCompany}
+                    onOpenChange={setShowCreateCompany}
+                    onSuccess={(company) => {
+                      setSelectedCompanyId(company.id);
+                    }}
+                  />
+                )}
               </CardContent>
             </Card>
 
@@ -465,7 +543,7 @@ useEffect(() => {
 
                 <div>
                   <Label htmlFor="tags">Skills/Tags (comma-separated)</Label>
-                  <Input
+                <Input
                     id="tags"
                     value={formData.tags}
                     onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
@@ -525,8 +603,10 @@ useEffect(() => {
             </Card>
 
             <div className="flex gap-4">
-              <Button type="submit" disabled={postJobMutation.isPending} data-testid="button-submit" className="flex-1">
-                {postJobMutation.isPending ? 'Posting...' : 'Post Job'}
+              <Button type="submit" disabled={isSaving} data-testid="button-submit" className="flex-1">
+                {isEdit
+                  ? (updateJobMutation.isPending ? 'Saving...' : 'Save Changes')
+                  : (postJobMutation.isPending ? 'Posting...' : 'Post Job')}
               </Button>
               <Button type="button" variant="outline" onClick={() => setLocation('/dashboard')} data-testid="button-cancel">
                 Cancel
