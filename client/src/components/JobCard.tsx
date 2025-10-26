@@ -76,7 +76,7 @@ export function JobCard({ job, onSave, isSaved }: JobCardProps) {
             </Badge>
             {job.salaryMin || job.salaryMax ? (
               <Badge variant="outline" className="text-xs" data-testid="badge-salary">
-                {formatSalary(job.salaryMin, job.salaryMax, job.salaryCurrency ?? undefined)}
+                {formatSalary(job.salaryMin, job.salaryMax, job.salaryCurrency ?? undefined, job.salaryPeriod)}
               </Badge>
             ) : null}
             {job.category && (

@@ -17,6 +17,7 @@ type CompanyFormData = {
   location: string;
   size: string;
   logo: string;
+  twitter: string;
 };
 
 const DEFAULT_DATA: CompanyFormData = {
@@ -26,6 +27,7 @@ const DEFAULT_DATA: CompanyFormData = {
   location: "",
   size: "",
   logo: "",
+  twitter: "",
 };
 
 interface CompanyFormDialogProps {
@@ -152,6 +154,17 @@ export function CompanyFormDialog({
                 data-testid="input-company-location"
               />
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="companyTwitter">Twitter / X</Label>
+            <Input
+              id="companyTwitter"
+              type="url"
+              value={formData.twitter}
+              onChange={(event) => setFormData((prev) => ({ ...prev, twitter: event.target.value }))}
+              placeholder="https://twitter.com/yourcompany"
+            />
           </div>
 
           <FileUpload

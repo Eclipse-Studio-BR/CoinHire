@@ -1,9 +1,11 @@
-import { useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocation } from "wouter";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -21,6 +23,15 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Job, Company } from "@shared/schema";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 
 type AdminStats = {
   totalJobs: number;
@@ -28,23 +39,87 @@ type AdminStats = {
   totalUsers: number;
 };
 
-export default function AdminPanel() {
-  const { user, isLoading: authLoading, isAuthenticated } = useAuth();
+const adminLoginSchema = z.object({
+  email: z.string().email("Admin email is required"),
+  password: z.string().min(1, "Password is required"),
+});
+
+type AdminLoginValues = z.infer<typeof adminLoginSchema>;
+
+function AdminLoginCard() {
+  const form = useForm<AdminLoginValues>({
+    resolver: zodResolver(adminLoginSchema),
+    defaultValues: { email: "", password: "" },
+  });
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
-  useEffect(() => {
-    if (!authLoading && (!isAuthenticated || user?.role !== 'admin')) {
+  const handleSubmit = async (values: AdminLoginValues) => {
+    try {
+      await apiRequest("POST", "/api/auth/admin-login", values);
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({ title: "Admin access granted" });
+      setLocation("/admin");
+    } catch (error) {
       toast({
-        title: "Unauthorized",
-        description: "Only admins can access this page.",
+        title: "Admin login failed",
+        description: error instanceof Error ? error.message : "Please confirm the configured admin credentials.",
         variant: "destructive",
       });
-      setTimeout(() => {
-        setLocation("/");
-      }, 500);
     }
-  }, [isAuthenticated, authLoading, user, toast, setLocation]);
+  };
+
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader>
+        <CardTitle>Admin Access</CardTitle>
+        <CardDescription>Enter the admin credentials configured for this deployment.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form className="space-y-5" onSubmit={form.handleSubmit(handleSubmit)}>
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Admin Email</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="admin@example.com" {...field} autoComplete="username" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="••••••••" {...field} autoComplete="current-password" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? "Verifying..." : "Sign In as Admin"}
+            </Button>
+            <p className="text-xs text-muted-foreground text-center">
+              These credentials are managed via environment variables on the server.
+            </p>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function AdminPanel() {
+  const { user, isLoading: authLoading, isAuthenticated } = useAuth();
+  const { toast } = useToast();
 
   const { data: pendingJobs = [] } = useQuery<Job[]>({
     queryKey: ["/api/admin/jobs/pending"],
@@ -113,13 +188,25 @@ export default function AdminPanel() {
     },
   });
 
-  if (authLoading || !isAuthenticated || user?.role !== 'admin') {
+  if (authLoading) {
     return (
       <div className="flex flex-col min-h-screen">
         <Navbar />
         <div className="flex-1 flex items-center justify-center">
-          <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full"></div>
+          <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full" />
         </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || user?.role !== 'admin') {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center px-4 py-12">
+          <AdminLoginCard />
+        </main>
         <Footer />
       </div>
     );

@@ -6,15 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { FileUpload } from "@/components/FileUpload";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { PublicUser } from "@shared/schema";
+import type { PublicUser, TalentProfile } from "@shared/schema";
 import { Loader2 } from "lucide-react";
+import { TIMEZONES } from "@/lib/timezones";
 
 const profileFormSchema = z.object({
   firstName: z.string().max(100, "First name must be 100 characters or less").optional(),
@@ -27,8 +30,22 @@ const passwordFormSchema = z.object({
   newPassword: z.string().min(8, "New password must be at least 8 characters"),
 });
 
+const talentProfileFormSchema = z.object({
+  title: z.string().max(255, "Title is too long").optional().or(z.literal("")),
+  story: z.string().max(2000, "Story is too long").optional().or(z.literal("")),
+  location: z.string().max(255, "Location is too long").optional().or(z.literal("")),
+  timezone: z.string().max(100).optional().or(z.literal("UTC")),
+  hourlyRate: z.string().optional().or(z.literal("")),
+  monthlyRate: z.string().optional().or(z.literal("")),
+  skills: z.string().optional().or(z.literal("")),
+  languages: z.string().optional().or(z.literal("")),
+  linkedinUrl: z.string().url("Enter a valid URL").optional().or(z.literal("")),
+  telegram: z.string().optional().or(z.literal("")),
+});
+
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 type PasswordFormValues = z.infer<typeof passwordFormSchema>;
+type TalentProfileFormValues = z.infer<typeof talentProfileFormSchema>;
 
 const EMPTY_PROFILE_VALUES: ProfileFormValues = {
   firstName: "",
@@ -41,8 +58,22 @@ const EMPTY_PASSWORD_VALUES: PasswordFormValues = {
   newPassword: "",
 };
 
+const EMPTY_TALENT_PROFILE_VALUES: TalentProfileFormValues = {
+  title: "",
+  story: "",
+  location: "",
+  timezone: "UTC",
+  hourlyRate: "",
+  monthlyRate: "",
+  skills: "",
+  languages: "",
+  linkedinUrl: "",
+  telegram: "",
+};
+
 export default function Settings() {
   const { user } = useAuth();
+  const isTalent = user?.role === 'talent';
   const { toast } = useToast();
 
   const profileForm = useForm<ProfileFormValues>({
@@ -55,9 +86,25 @@ export default function Settings() {
     defaultValues: EMPTY_PASSWORD_VALUES,
   });
 
+  const talentProfileForm = useForm<TalentProfileFormValues>({
+    resolver: zodResolver(talentProfileFormSchema),
+    defaultValues: EMPTY_TALENT_PROFILE_VALUES,
+  });
+
+  const { data: talentProfile, isLoading: talentProfileLoading } = useQuery<TalentProfile | null>({
+    queryKey: ["/api/talent/profile"],
+    enabled: isTalent,
+  });
+
   useEffect(() => {
     profileForm.reset(buildProfileDefaults(user));
   }, [user, profileForm]);
+
+  useEffect(() => {
+    if (isTalent) {
+      talentProfileForm.reset(buildTalentProfileDefaults(talentProfile));
+    }
+  }, [isTalent, talentProfile, talentProfileForm]);
 
   const profileMutation = useMutation({
     mutationFn: async (values: ProfileFormValues) => {
@@ -101,6 +148,38 @@ export default function Settings() {
     },
   });
 
+  const talentProfileMutation = useMutation({
+    mutationFn: async (values: TalentProfileFormValues) => {
+      await apiRequest("PUT", "/api/talent/profile", {
+        title: values.title,
+        story: values.story,
+        location: values.location,
+        timezone: values.timezone,
+        hourlyRate: values.hourlyRate ?? "",
+        monthlyRate: values.monthlyRate ?? "",
+        skills: values.skills ?? "",
+        languages: values.languages ?? "",
+        linkedinUrl: values.linkedinUrl,
+        telegram: values.telegram,
+      });
+    },
+    onSuccess: async () => {
+      toast({
+        title: "Talent profile updated",
+        description: "Your story and rates are up to date.",
+      });
+      await queryClient.invalidateQueries({ queryKey: ["/api/talent/profile"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Unable to update talent profile",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+  const talentFormDisabled = talentProfileLoading || talentProfileMutation.isPending;
+
   const handleProfileSubmit = (values: ProfileFormValues) => {
     profileMutation.mutate({
       firstName: values.firstName ?? "",
@@ -111,6 +190,10 @@ export default function Settings() {
 
   const handlePasswordSubmit = (values: PasswordFormValues) => {
     passwordMutation.mutate(values);
+  };
+
+  const handleTalentProfileSubmit = (values: TalentProfileFormValues) => {
+    talentProfileMutation.mutate(values);
   };
 
   return (
@@ -221,6 +304,195 @@ export default function Settings() {
               </CardContent>
             </Card>
 
+            {isTalent && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Talent profile</CardTitle>
+                  <CardDescription>Share your story, rates, and skills with employers.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {talentProfileLoading && !talentProfile ? (
+                    <div className="flex min-h-[120px] items-center justify-center">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    </div>
+                  ) : (
+                    <Form {...talentProfileForm}>
+                      <form className="space-y-5" onSubmit={talentProfileForm.handleSubmit(handleTalentProfileSubmit)}>
+                        <FormField
+                          control={talentProfileForm.control}
+                          name="title"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Title</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Senior Smart Contract Engineer" {...field} disabled={talentFormDisabled} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={talentProfileForm.control}
+                          name="story"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>What's your story?</FormLabel>
+                              <FormControl>
+                                <Textarea rows={4} placeholder="Talk about what makes you great" {...field} disabled={talentFormDisabled} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <FormField
+                            control={talentProfileForm.control}
+                            name="location"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Location</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Remote or City, Country" {...field} disabled={talentFormDisabled} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={talentProfileForm.control}
+                            name="timezone"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Timezone</FormLabel>
+                                <FormControl>
+                                  <Select value={field.value} onValueChange={field.onChange} disabled={talentFormDisabled}>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select timezone" />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-60">
+                                      {TIMEZONES.map((tz) => (
+                                        <SelectItem key={tz} value={tz}>
+                                          {tz}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <FormField
+                            control={talentProfileForm.control}
+                            name="hourlyRate"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Hourly rate (USD)</FormLabel>
+                                <FormControl>
+                                  <Input type="number" min="0" placeholder="120" {...field} disabled={talentFormDisabled} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={talentProfileForm.control}
+                            name="monthlyRate"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Monthly rate (USD)</FormLabel>
+                                <FormControl>
+                                  <Input type="number" min="0" placeholder="18000" {...field} disabled={talentFormDisabled} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <FormField
+                          control={talentProfileForm.control}
+                          name="skills"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Skills (comma separated)</FormLabel>
+                              <FormControl>
+                                <Textarea rows={2} placeholder="Solidity, Rust, Tokenomics" {...field} disabled={talentFormDisabled} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={talentProfileForm.control}
+                          name="languages"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Languages</FormLabel>
+                              <FormControl>
+                                <Input placeholder="English, Spanish" {...field} disabled={talentFormDisabled} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <FormField
+                            control={talentProfileForm.control}
+                            name="linkedinUrl"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>LinkedIn</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="https://linkedin.com/in/you" {...field} disabled={talentFormDisabled} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={talentProfileForm.control}
+                            name="telegram"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Telegram</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="@yourhandle" {...field} disabled={talentFormDisabled} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <div className="flex justify-end gap-3">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            disabled={talentFormDisabled || !talentProfileForm.formState.isDirty}
+                            onClick={() => talentProfileForm.reset(buildTalentProfileDefaults(talentProfile))}
+                          >
+                            Cancel
+                          </Button>
+                          <Button type="submit" disabled={talentFormDisabled}>
+                            {talentProfileMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {talentProfileMutation.isPending ? "Saving" : "Save talent profile"}
+                          </Button>
+                        </div>
+                      </form>
+                    </Form>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader>
                 <CardTitle>Password</CardTitle>
@@ -295,5 +567,24 @@ function buildProfileDefaults(user: PublicUser | null): ProfileFormValues {
     firstName: user?.firstName ?? "",
     lastName: user?.lastName ?? "",
     profileImageUrl: user?.profileImageUrl ?? "",
+  };
+}
+
+function buildTalentProfileDefaults(profile: TalentProfile | null | undefined): TalentProfileFormValues {
+  if (!profile) {
+    return EMPTY_TALENT_PROFILE_VALUES;
+  }
+
+  return {
+    title: profile.headline ?? "",
+    story: profile.bio ?? "",
+    location: profile.location ?? "",
+    timezone: profile.timezone ?? "UTC",
+    hourlyRate: profile.hourlyRate ? String(profile.hourlyRate) : "",
+    monthlyRate: profile.monthlyRate ? String(profile.monthlyRate) : "",
+    skills: profile.skills?.join(", ") ?? "",
+    languages: profile.languages?.join(", ") ?? "",
+    linkedinUrl: profile.linkedinUrl ?? "",
+    telegram: profile.telegram ?? "",
   };
 }

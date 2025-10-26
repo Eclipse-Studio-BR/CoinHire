@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { registerAuth, requireAuth, requireRole } from "./auth";
-import { insertJobSchema, insertCompanySchema, insertApplicationSchema } from "@shared/schema";
+import { insertJobSchema, insertCompanySchema, insertApplicationSchema, type InsertTalentProfile } from "@shared/schema";
 import { z } from "zod";
 import Stripe from "stripe";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
@@ -12,6 +12,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { randomUUID } from "crypto";
+import { generateUniqueCompanySlug } from "./utils/slug";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe key: STRIPE_SECRET_KEY');
@@ -30,30 +31,36 @@ const createCompanySchema = z.object({
   location: z.string().optional().or(z.literal("")),
   size: z.string().optional().or(z.literal("")),
   logo: z.string().optional().or(z.literal("")),
+  twitter: z.string().url().optional().or(z.literal("")),
 });
 
-function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/-{2,}/g, "-");
-}
+const optionalNumericString = () =>
+  z.preprocess(
+    (val) => {
+      if (val === "" || val === null || val === undefined) {
+        return null;
+      }
+      if (typeof val === "string") {
+        const parsed = Number(val);
+        return Number.isFinite(parsed) ? Math.round(parsed) : val;
+      }
+      return val;
+    },
+    z.number().int().min(0).nullable().optional(),
+  );
 
-async function generateUniqueCompanySlug(name: string): Promise<string> {
-  const baseSlug = slugify(name) || `company-${Date.now()}`;
-  let slug = baseSlug;
-  let counter = 1;
-
-  // Ensure slug uniqueness
-  while (await storage.getCompanyBySlug(slug)) {
-    slug = `${baseSlug}-${counter}`;
-    counter += 1;
-  }
-
-  return slug;
-}
+const talentProfileUpdateSchema = z.object({
+  title: z.string().min(2).optional(),
+  story: z.string().min(10).optional(),
+  location: z.string().min(2).optional(),
+  timezone: z.string().min(2).optional(),
+  hourlyRate: optionalNumericString(),
+  monthlyRate: optionalNumericString(),
+  skills: z.string().optional(),
+  languages: z.string().optional(),
+  linkedinUrl: z.string().url().optional(),
+  telegram: z.string().optional(),
+});
 
 const LOCAL_UPLOADS_ROOT = path.resolve(process.cwd(), "uploads");
 const LOCAL_LOGO_DIR = path.join(LOCAL_UPLOADS_ROOT, "logos");
@@ -64,6 +71,14 @@ function ensureDirExists(dir: string) {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
+}
+
+function splitCommaList(value?: string): string[] {
+  if (!value) return [];
+  return value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
 }
 
 const LOGO_MIME_TYPES = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
@@ -146,36 +161,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     uploader: multer.Multer,
     subDir: string,
     contextLabel: string,
+    options?: { requiresAuth?: boolean },
   ) => {
-    app.post(
-      route,
-      requireAuth,
-      (req, res, next) => {
-        uploader.single("file")(req, res, (err) => {
-          if (err) {
-            console.error(`${contextLabel} upload error:`, err);
-            if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
-              return res.status(413).json({ error: `${contextLabel} exceeds the 5MB limit.` });
-            }
-            return res.status(400).json({ error: err.message || "Upload failed" });
+    const middlewares: Array<(req: Request, res: Response, next: (err?: any) => void) => void> = [];
+    if (options?.requiresAuth !== false) {
+      middlewares.push(requireAuth);
+    }
+
+    middlewares.push((req, res, next) => {
+      uploader.single("file")(req as any, res as any, (err: any) => {
+        if (err) {
+          console.error(`${contextLabel} upload error:`, err);
+          if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+            return res.status(413).json({ error: `${contextLabel} exceeds the 5MB limit.` });
           }
-          next();
-        });
-      },
-      (req, res) => {
-        const file = (req as Request & { file?: Express.Multer.File }).file;
-        if (!file) {
-          return res.status(400).json({ error: "Missing file upload" });
+          return res.status(400).json({ error: err.message || "Upload failed" });
         }
-        const publicPath = `/uploads/${subDir}/${path.basename(file.path)}`;
-        return res.status(200).json({ objectPath: publicPath });
-      },
-    );
+        next();
+      });
+    });
+
+    middlewares.push((req, res) => {
+      const file = (req as Request & { file?: Express.Multer.File }).file;
+      if (!file) {
+        return res.status(400).json({ error: "Missing file upload" });
+      }
+      const publicPath = `/uploads/${subDir}/${path.basename(file.path)}`;
+      return res.status(200).json({ objectPath: publicPath });
+    });
+
+    app.post(route, ...middlewares);
   };
 
   registerLocalUploadRoute("/api/uploads/logo", localLogoUploader, "logos", "Logo file");
   registerLocalUploadRoute("/api/uploads/avatar", localAvatarUploader, "avatars", "Avatar file");
   registerLocalUploadRoute("/api/uploads/resume", localResumeUploader, "resumes", "Resume file");
+  registerLocalUploadRoute("/api/uploads/public/logo", localLogoUploader, "logos", "Logo file", { requiresAuth: false });
+  registerLocalUploadRoute("/api/uploads/public/avatar", localAvatarUploader, "avatars", "Avatar file", { requiresAuth: false });
 
   // ==================== Object Storage ====================
   // Based on blueprint:javascript_object_storage
@@ -580,6 +602,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         location: parsedData.location || undefined,
         size: parsedData.size || undefined,
         logo: parsedData.logo || undefined,
+        twitter: parsedData.twitter || undefined,
       };
 
       const user = await storage.getUser(req.session.userId!);
@@ -807,6 +830,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/applications/:id', requireRole('employer', 'recruiter', 'admin'), async (req: Request, res: Response) => {
+    try {
+      const existingApplication = await storage.getApplication(req.params.id);
+      if (!existingApplication) {
+        return res.status(404).json({ error: 'Application not found' });
+      }
+
+      const job = await storage.getJob(existingApplication.jobId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+
+      const isMember = await storage.isCompanyMember(req.session.userId!, job.companyId);
+      const user = await storage.getUser(req.session.userId!);
+      if (!isMember && user?.role !== 'admin') {
+        return res.status(403).json({ error: 'You do not have permission to delete this application' });
+      }
+
+      await storage.deleteApplication(existingApplication.id);
+      res.status(204).end();
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   // ==================== Saved Jobs ====================
 
   // Get saved jobs
@@ -899,6 +947,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteSavedSearch(req.params.id);
       res.json({ success: true });
     } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Talent Profile
+  app.get('/api/talent/profile', requireRole('talent'), async (req: Request, res: Response) => {
+    try {
+      const profile = await storage.getTalentProfile(req.session.userId!);
+      res.json(profile ?? null);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/talent/profile', requireRole('talent'), async (req: Request, res: Response) => {
+    try {
+      const payload = talentProfileUpdateSchema.parse(req.body);
+      const updates: Partial<InsertTalentProfile> = {};
+
+      if (payload.title !== undefined) updates.headline = payload.title.trim();
+      if (payload.story !== undefined) updates.bio = payload.story.trim();
+      if (payload.location !== undefined) updates.location = payload.location.trim();
+      if (payload.timezone !== undefined) updates.timezone = payload.timezone.trim();
+      if (payload.hourlyRate !== undefined) updates.hourlyRate = payload.hourlyRate;
+      if (payload.monthlyRate !== undefined) updates.monthlyRate = payload.monthlyRate;
+      if (payload.skills !== undefined) updates.skills = splitCommaList(payload.skills);
+      if (payload.languages !== undefined) updates.languages = splitCommaList(payload.languages);
+      if (payload.linkedinUrl !== undefined) {
+        const trimmed = payload.linkedinUrl.trim();
+        updates.linkedinUrl = trimmed.length ? trimmed : null;
+      }
+      if (payload.telegram !== undefined) {
+        const trimmed = payload.telegram.trim();
+        updates.telegram = trimmed.length ? trimmed : null;
+      }
+
+      const userId = req.session.userId!;
+      const existingProfile = await storage.getTalentProfile(userId);
+
+      if (!existingProfile) {
+        const created = await storage.createTalentProfile({
+          userId,
+          headline: updates.headline ?? "",
+          bio: updates.bio ?? "",
+          skills: updates.skills ?? [],
+          languages: updates.languages ?? [],
+          location: updates.location ?? "",
+          timezone: updates.timezone ?? "",
+          hourlyRate: updates.hourlyRate ?? null,
+          monthlyRate: updates.monthlyRate ?? null,
+          portfolioUrl: null,
+          githubUrl: null,
+          experience: null,
+          education: null,
+          linkedinUrl: updates.linkedinUrl ?? null,
+          telegram: updates.telegram ?? null,
+          resumeUrl: null,
+          isPublic: true,
+        });
+        return res.json(created);
+      }
+
+      const updatedProfile = await storage.updateTalentProfile(userId, updates);
+      res.json(updatedProfile);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.flatten() });
+      }
       res.status(500).json({ error: error.message });
     }
   });

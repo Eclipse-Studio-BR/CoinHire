@@ -22,6 +22,8 @@ export const applicationStatusEnum = pgEnum('application_status', ['submitted', 
 export const jobTypeEnum = pgEnum('job_type', ['full_time', 'part_time', 'contract', 'internship']);
 export const experienceLevelEnum = pgEnum('experience_level', ['entry', 'mid', 'senior', 'lead', 'executive']);
 export const alertFrequencyEnum = pgEnum('alert_frequency', ['daily', 'weekly']);
+export const salaryPeriodEnum = pgEnum('salary_period', ['year', 'month', 'week', 'hour']);
+export const applicationMethodEnum = pgEnum('application_method', ['email', 'external']);
 
 // Session storage table (required for Replit Auth)
 export const sessions = pgTable(
@@ -62,6 +64,7 @@ export const companies = pgTable("companies", {
   slug: varchar("slug", { length: 255 }).unique().notNull(),
   description: text("description"),
   website: varchar("website", { length: 500 }),
+  twitter: varchar("twitter", { length: 255 }),
   logo: varchar("logo", { length: 500 }),
   location: varchar("location", { length: 255 }),
   size: varchar("size", { length: 50 }),
@@ -94,11 +97,14 @@ export const jobs = pgTable("jobs", {
   salaryMin: integer("salary_min"),
   salaryMax: integer("salary_max"),
   salaryCurrency: varchar("salary_currency", { length: 10 }).default('USD'),
+  salaryPeriod: salaryPeriodEnum("salary_period").default('month').notNull(),
   jobType: jobTypeEnum("job_type").default('full_time').notNull(),
   experienceLevel: experienceLevelEnum("experience_level").default('mid').notNull(),
   tier: jobTierEnum("tier").default('normal').notNull(),
   status: jobStatusEnum("status").default('draft').notNull(),
   externalUrl: varchar("external_url", { length: 500 }),
+  applicationMethod: applicationMethodEnum("application_method").default('email').notNull(),
+  applicationEmail: varchar("application_email", { length: 255 }),
   tags: text("tags").array(),
   viewCount: integer("view_count").default(0).notNull(),
   applyCount: integer("apply_count").default(0).notNull(),
@@ -116,11 +122,17 @@ export const talentProfiles = pgTable("talent_profiles", {
   headline: varchar("headline", { length: 255 }),
   bio: text("bio"),
   skills: text("skills").array(),
+  languages: text("languages").array(),
   experience: text("experience"),
   education: text("education"),
+  location: varchar("location", { length: 255 }),
+  timezone: varchar("timezone", { length: 100 }),
+  hourlyRate: integer("hourly_rate"),
+  monthlyRate: integer("monthly_rate"),
   portfolioUrl: varchar("portfolio_url", { length: 500 }),
   githubUrl: varchar("github_url", { length: 500 }),
   linkedinUrl: varchar("linkedin_url", { length: 500 }),
+  telegram: varchar("telegram", { length: 255 }),
   resumeUrl: varchar("resume_url", { length: 500 }),
   isPublic: boolean("is_public").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -334,6 +346,7 @@ export type InsertTalentProfile = z.infer<typeof insertTalentProfileSchema>;
 
 export type Application = typeof applications.$inferSelect;
 export type InsertApplication = z.infer<typeof insertApplicationSchema>;
+export type UpdateApplication = Partial<Omit<InsertApplication, 'userId' | 'jobId'>>;
 
 export type SavedJob = typeof savedJobs.$inferSelect;
 export type InsertSavedJob = z.infer<typeof insertSavedJobSchema>;
