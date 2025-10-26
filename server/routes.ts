@@ -59,6 +59,8 @@ async function generateUniqueCompanySlug(name: string): Promise<string> {
 
 const LOCAL_UPLOADS_ROOT = path.resolve(process.cwd(), "uploads");
 const LOCAL_LOGO_DIR = path.join(LOCAL_UPLOADS_ROOT, "logos");
+const LOCAL_AVATAR_DIR = path.join(LOCAL_UPLOADS_ROOT, "avatars");
+const LOCAL_RESUME_DIR = path.join(LOCAL_UPLOADS_ROOT, "resumes");
 
 function ensureDirExists(dir: string) {
   if (!fs.existsSync(dir)) {
@@ -74,47 +76,88 @@ const LOGO_EXTENSION_FALLBACK: Record<string, string> = {
   "image/svg+xml": ".svg",
 };
 
+const RESUME_MIME_TYPES = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
+
+const RESUME_EXTENSION_FALLBACK: Record<string, string> = {
+  "application/pdf": ".pdf",
+  "application/msword": ".doc",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+};
+
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
-const localLogoUploader = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => {
-      ensureDirExists(LOCAL_LOGO_DIR);
-      cb(null, LOCAL_LOGO_DIR);
+function createLocalUploader(options: {
+  targetDir: string;
+  mimeTypes: string[];
+  extensionFallback: Record<string, string>;
+}) {
+  const { targetDir, mimeTypes, extensionFallback } = options;
+  return multer({
+    storage: multer.diskStorage({
+      destination: (_req, _file, cb) => {
+        ensureDirExists(targetDir);
+        cb(null, targetDir);
+      },
+      filename: (_req, file, cb) => {
+        const ext = path.extname(file.originalname) || extensionFallback[file.mimetype] || "";
+        cb(null, `${Date.now()}-${randomUUID()}${ext}`);
+      },
+    }),
+    fileFilter: (_req, file, cb) => {
+      if (mimeTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error("Unsupported file type"));
+      }
     },
-    filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname) || LOGO_EXTENSION_FALLBACK[file.mimetype] || "";
-      cb(null, `${Date.now()}-${randomUUID()}${ext}`);
+    limits: {
+      fileSize: MAX_UPLOAD_BYTES,
     },
-  }),
-  fileFilter: (_req, file, cb) => {
-    if (LOGO_MIME_TYPES.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error("Unsupported file type"));
-    }
-  },
-  limits: {
-    fileSize: MAX_UPLOAD_BYTES,
-  },
+  });
+}
+
+const localLogoUploader = createLocalUploader({
+  targetDir: LOCAL_LOGO_DIR,
+  mimeTypes: LOGO_MIME_TYPES,
+  extensionFallback: LOGO_EXTENSION_FALLBACK,
+});
+
+const localAvatarUploader = createLocalUploader({
+  targetDir: LOCAL_AVATAR_DIR,
+  mimeTypes: LOGO_MIME_TYPES,
+  extensionFallback: LOGO_EXTENSION_FALLBACK,
+});
+
+const localResumeUploader = createLocalUploader({
+  targetDir: LOCAL_RESUME_DIR,
+  mimeTypes: RESUME_MIME_TYPES,
+  extensionFallback: RESUME_EXTENSION_FALLBACK,
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes
   registerAuth(app);
   await storage.ensureDefaultPlans();
-  const isObjectStorageConfigured = Boolean(process.env.PRIVATE_OBJECT_DIR);
 
-  if (!isObjectStorageConfigured) {
+  const registerLocalUploadRoute = (
+    route: string,
+    uploader: multer.Multer,
+    subDir: string,
+    contextLabel: string,
+  ) => {
     app.post(
-      "/api/uploads/logo",
+      route,
       requireAuth,
       (req, res, next) => {
-        localLogoUploader.single("file")(req, res, (err) => {
+        uploader.single("file")(req, res, (err) => {
           if (err) {
-            console.error("Logo upload error:", err);
+            console.error(`${contextLabel} upload error:`, err);
             if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
-              return res.status(413).json({ error: "Logo file exceeds the 5MB limit." });
+              return res.status(413).json({ error: `${contextLabel} exceeds the 5MB limit.` });
             }
             return res.status(400).json({ error: err.message || "Upload failed" });
           }
@@ -126,15 +169,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!file) {
           return res.status(400).json({ error: "Missing file upload" });
         }
-        const publicPath = `/uploads/logos/${path.basename(file.path)}`;
+        const publicPath = `/uploads/${subDir}/${path.basename(file.path)}`;
         return res.status(200).json({ objectPath: publicPath });
       },
     );
-  } else {
-    app.post("/api/uploads/logo", requireAuth, (_req, res) => {
-      return res.status(503).json({ error: "Direct uploads are disabled" });
-    });
-  }
+  };
+
+  registerLocalUploadRoute("/api/uploads/logo", localLogoUploader, "logos", "Logo file");
+  registerLocalUploadRoute("/api/uploads/avatar", localAvatarUploader, "avatars", "Avatar file");
+  registerLocalUploadRoute("/api/uploads/resume", localResumeUploader, "resumes", "Resume file");
 
   // ==================== Object Storage ====================
   // Based on blueprint:javascript_object_storage
@@ -229,6 +272,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(200).json({ objectPath });
     } catch (error: any) {
       console.error("Error setting logo ACL:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Set ACL policy for uploaded user avatar
+  app.put("/api/objects/avatar", requireAuth, async (req, res) => {
+    try {
+      if (!req.body.avatarURL) {
+        return res.status(400).json({ error: "avatarURL is required" });
+      }
+
+      const userId = req.session.userId!;
+      const objectStorageService = new ObjectStorageService();
+
+      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
+        req.body.avatarURL,
+        {
+          owner: userId,
+          visibility: "public",
+        },
+      );
+
+      res.status(200).json({ objectPath });
+    } catch (error: any) {
+      console.error("Error setting avatar ACL:", error);
       res.status(500).json({ error: error.message });
     }
   });

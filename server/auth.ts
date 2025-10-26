@@ -183,6 +183,21 @@ const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+const updateProfileSchema = z
+  .object({
+    firstName: z.string().trim().max(100, "First name must be 100 characters or less").optional(),
+    lastName: z.string().trim().max(100, "Last name must be 100 characters or less").optional(),
+    profileImageUrl: z.string().trim().max(500, "Profile image path is too long").optional(),
+  })
+  .refine((data) => Object.values(data).some((value) => value !== undefined), {
+    message: "At least one field is required to update your profile",
+  });
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(8, "New password must be at least 8 characters long"),
+});
+
 export function registerAuth(app: Express) {
   app.use(async (_req, _res, next) => {
     try {
@@ -308,6 +323,94 @@ export function registerAuth(app: Express) {
     }
 
     return res.json(toPublicUser(user));
+  });
+
+  app.put("/api/auth/profile", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    try {
+      const payload = updateProfileSchema.parse(req.body);
+      const updates: Partial<User> = {
+        updatedAt: new Date(),
+      };
+
+      if (payload.firstName !== undefined) {
+        const trimmed = payload.firstName.trim();
+        updates.firstName = trimmed.length ? trimmed : null;
+      }
+
+      if (payload.lastName !== undefined) {
+        const trimmed = payload.lastName.trim();
+        updates.lastName = trimmed.length ? trimmed : null;
+      }
+
+      if (payload.profileImageUrl !== undefined) {
+        const trimmed = payload.profileImageUrl.trim();
+        updates.profileImageUrl = trimmed.length ? trimmed : null;
+      }
+
+      const [updatedUser] = await db
+        .update(users)
+        .set(updates)
+        .where(eq(users.id, req.session.userId))
+        .returning();
+
+      if (!updatedUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      return res.json(toPublicUser(updatedUser));
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.flatten() });
+      }
+      console.error("Profile update error:", error);
+      return res.status(500).json({ error: "Unable to update profile at this time." });
+    }
+  });
+
+  app.put("/api/auth/password", async (req: Request, res: Response) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    try {
+      const payload = changePasswordSchema.parse(req.body);
+
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, req.session.userId));
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const isCurrentValid = await verifyPassword(payload.currentPassword, user.passwordHash);
+      if (!isCurrentValid) {
+        return res.status(400).json({ error: "Current password is incorrect." });
+      }
+
+      if (payload.currentPassword === payload.newPassword) {
+        return res.status(400).json({ error: "The new password must be different from your current password." });
+      }
+
+      const passwordHash = await hashPassword(payload.newPassword);
+      await db
+        .update(users)
+        .set({ passwordHash, updatedAt: new Date() })
+        .where(eq(users.id, req.session.userId));
+
+      return res.json({ success: true });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.flatten() });
+      }
+      console.error("Password change error:", error);
+      return res.status(500).json({ error: "Unable to update password at this time." });
+    }
   });
 
   app.post("/api/auth/select-role", async (req: Request, res: Response) => {
