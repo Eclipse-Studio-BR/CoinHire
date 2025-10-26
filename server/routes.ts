@@ -17,9 +17,7 @@ if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe key: STRIPE_SECRET_KEY');
 }
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-09-30.clover',
-});
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const createCompanySchema = z.object({
   name: z.string().min(1),

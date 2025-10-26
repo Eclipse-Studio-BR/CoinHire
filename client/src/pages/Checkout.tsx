@@ -5,6 +5,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -83,6 +84,7 @@ export default function Checkout() {
   const planId = searchParams.get('planId');
   const [clientSecret, setClientSecret] = useState("");
   const stripePromiseValue = useMemo(() => getStripePromise(), []);
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   const { data: plan } = useQuery<Plan>({
     queryKey: [`/api/plans/${planId}`],
@@ -90,7 +92,7 @@ export default function Checkout() {
   });
 
   useEffect(() => {
-    if (!planId) return;
+    if (!planId || !isAuthenticated) return;
 
     apiRequest("POST", "/api/create-payment-intent", { planId, amount: plan?.price || 0 })
       .then((res) => res.json())
@@ -100,7 +102,7 @@ export default function Checkout() {
       .catch((error) => {
         console.error("Error creating payment intent:", error);
       });
-  }, [planId, plan]);
+  }, [planId, plan, isAuthenticated]);
 
   if (!planId) {
     return (
@@ -113,6 +115,48 @@ export default function Checkout() {
             <Button asChild>
               <a href="/pricing">View Pricing</a>
             </Button>
+          </Card>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (authLoading) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full" aria-label="Loading"></div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <Card className="p-10 max-w-md text-center space-y-4">
+            <CardHeader>
+              <CardTitle>Login Required</CardTitle>
+              <CardDescription>You need to be signed in to purchase a plan.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground">
+                Please log in to continue with checkout. After signing in, return to this page to complete your purchase.
+              </p>
+              <div className="flex flex-col gap-3">
+                <Button asChild size="lg">
+                  <a href="/login">Log In</a>
+                </Button>
+                <Button variant="outline" asChild size="lg">
+                  <a href="/pricing">Back to Pricing</a>
+                </Button>
+              </div>
+            </CardContent>
           </Card>
         </div>
         <Footer />
