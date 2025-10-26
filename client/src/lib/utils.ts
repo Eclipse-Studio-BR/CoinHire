@@ -6,11 +6,29 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatSalary(min?: number | null, max?: number | null, currency = 'USD'): string {
+type SalaryPeriod = 'year' | 'month' | 'week' | 'hour';
+
+const SALARY_PERIOD_LABELS: Record<SalaryPeriod, string> = {
+  year: 'year',
+  month: 'month',
+  week: 'week',
+  hour: 'hour',
+};
+
+export function formatSalary(min?: number | null, max?: number | null, currency = 'USD', period: string = 'year'): string {
   if (!min && !max) return 'Not specified';
-  if (min && max) return `$${(min / 1000).toFixed(0)}k - $${(max / 1000).toFixed(0)}k ${currency}`;
-  if (min) return `From $${(min / 1000).toFixed(0)}k ${currency}`;
-  if (max) return `Up to $${(max / 1000).toFixed(0)}k ${currency}`;
+
+  const normalizedPeriod: SalaryPeriod = (Object.keys(SALARY_PERIOD_LABELS) as SalaryPeriod[]).includes(period as SalaryPeriod)
+    ? (period as SalaryPeriod)
+    : 'year';
+  const unitLabel = SALARY_PERIOD_LABELS[normalizedPeriod];
+
+  const suffix = ` ${currency.toUpperCase()} / ${unitLabel}`;
+  const formatValue = (value: number) => `$${(value / 1000).toFixed(0)}k`;
+
+  if (min && max) return `${formatValue(min)} - ${formatValue(max)}${suffix}`;
+  if (min) return `From ${formatValue(min)}${suffix}`;
+  if (max) return `Up to ${formatValue(max)}${suffix}`;
   return 'Not specified';
 }
 

@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
@@ -45,6 +46,11 @@ export default function PostJob() {
     externalUrl: '',
     tags: '',
     visibilityDays: 30,
+    salaryCurrency: 'USD',
+    salaryPeriod: 'month',
+    applicationMethod: 'email' as 'email' | 'external',
+    applicationEmail: '',
+    applicationUrl: '',
   });
 
   useEffect(() => {
@@ -130,6 +136,24 @@ useEffect(() => {
       return;
     }
 
+    if (formData.applicationMethod === 'email' && !formData.applicationEmail.trim()) {
+      toast({
+        title: "Application email required",
+        description: "Provide an email for candidates to contact.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.applicationMethod === 'external' && !formData.applicationUrl.trim()) {
+      toast({
+        title: "Application link required",
+        description: "Provide a valid URL where candidates should apply.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const jobData = {
       companyId: primaryCompany ? primaryCompany.id : selectedCompanyId,
       title: formData.title,
@@ -141,10 +165,17 @@ useEffect(() => {
       isRemote: formData.isRemote,
       salaryMin: formData.salaryMin ? parseInt(formData.salaryMin) : undefined,
       salaryMax: formData.salaryMax ? parseInt(formData.salaryMax) : undefined,
+      salaryCurrency: formData.salaryCurrency,
+      salaryPeriod: formData.salaryPeriod,
       jobType: formData.jobType,
       experienceLevel: formData.experienceLevel,
       tier: formData.tier,
-      externalUrl: formData.externalUrl || undefined,
+      applicationMethod: formData.applicationMethod,
+      applicationEmail: formData.applicationMethod === 'email' ? formData.applicationEmail.trim() : undefined,
+      externalUrl:
+        formData.applicationMethod === 'external'
+          ? formData.applicationUrl.trim()
+          : formData.externalUrl || undefined,
       tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(Boolean) : undefined,
       visibilityDays: formData.visibilityDays,
     };
@@ -332,7 +363,7 @@ useEffect(() => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="salaryMin">Salary Min (USD)</Label>
+                    <Label htmlFor="salaryMin">Salary Min</Label>
                     <Input
                       id="salaryMin"
                       type="number"
@@ -344,7 +375,7 @@ useEffect(() => {
                   </div>
 
                   <div>
-                    <Label htmlFor="salaryMax">Salary Max (USD)</Label>
+                    <Label htmlFor="salaryMax">Salary Max</Label>
                     <Input
                       id="salaryMax"
                       type="number"
@@ -353,6 +384,45 @@ useEffect(() => {
                       placeholder="120000"
                       data-testid="input-salary-max"
                     />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Currency</Label>
+                    <Select
+                      value={formData.salaryCurrency}
+                      onValueChange={(value) => setFormData({ ...formData, salaryCurrency: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {['USD', 'EUR', 'CAD', 'GBP'].map((currency) => (
+                          <SelectItem key={currency} value={currency}>
+                            {currency}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Period</Label>
+                    <Select
+                      value={formData.salaryPeriod}
+                      onValueChange={(value) => setFormData({ ...formData, salaryPeriod: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {['year', 'month', 'week', 'hour'].map((period) => (
+                          <SelectItem key={period} value={period}>
+                            {period.charAt(0).toUpperCase() + period.slice(1)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -404,20 +474,53 @@ useEffect(() => {
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="externalUrl">External Application URL (optional)</Label>
-                  <Input
-                    id="externalUrl"
-                    type="url"
-                    value={formData.externalUrl}
-                    onChange={(e) => setFormData({ ...formData, externalUrl: e.target.value })}
-                    placeholder="https://yourcompany.com/apply"
-                    data-testid="input-external-url"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    If provided, applicants will be redirected to this URL instead of applying through the platform
-                  </p>
+                <div className="space-y-3">
+                  <Label>Application method</Label>
+                  <RadioGroup
+                    value={formData.applicationMethod}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, applicationMethod: value as 'email' | 'external' })
+                    }
+                    className="flex gap-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="email" id="method-email" />
+                      <Label htmlFor="method-email" className="cursor-pointer">
+                        Email
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="external" id="method-external" />
+                      <Label htmlFor="method-external" className="cursor-pointer">
+                        External link
+                      </Label>
+                    </div>
+                  </RadioGroup>
                 </div>
+
+                {formData.applicationMethod === 'email' ? (
+                  <div>
+                    <Label htmlFor="applicationEmail">Application email</Label>
+                    <Input
+                      id="applicationEmail"
+                      type="email"
+                      value={formData.applicationEmail}
+                      onChange={(e) => setFormData({ ...formData, applicationEmail: e.target.value })}
+                      placeholder="jobs@yourcompany.com"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <Label htmlFor="applicationUrl">Application link</Label>
+                    <Input
+                      id="applicationUrl"
+                      type="url"
+                      value={formData.applicationUrl}
+                      onChange={(e) => setFormData({ ...formData, applicationUrl: e.target.value })}
+                      placeholder="https://yourcompany.com/apply"
+                    />
+                  </div>
+                )}
               </CardContent>
             </Card>
 

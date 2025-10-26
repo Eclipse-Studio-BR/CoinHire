@@ -96,6 +96,7 @@ export interface IStorage {
   listApplications(filters?: { userId?: string; jobId?: string; status?: string }): Promise<Application[]>;
   createApplication(application: InsertApplication): Promise<Application>;
   updateApplication(id: string, updates: Partial<InsertApplication>): Promise<Application | undefined>;
+  deleteApplication(id: string): Promise<void>;
   listEmployerApplications(userId: string): Promise<
     Array<{
       job: Job & { company?: Company };
@@ -110,7 +111,9 @@ export interface IStorage {
           email?: string;
           firstName?: string;
           lastName?: string;
+          profileImageUrl?: string;
         };
+        applicantProfile?: TalentProfile | null;
       }>;
     }>
   >;
@@ -459,6 +462,10 @@ export class DbStorage implements IStorage {
     return application;
   }
 
+  async deleteApplication(id: string): Promise<void> {
+    await db.delete(applications).where(eq(applications.id, id));
+  }
+
   async listEmployerApplications(userId: string): Promise<
     Array<{
       job: Job & { company?: Company };
@@ -511,7 +518,9 @@ export class DbStorage implements IStorage {
             email?: string;
             firstName?: string;
             lastName?: string;
+            profileImageUrl?: string;
           };
+          applicantProfile?: TalentProfile | null;
         }>;
       }
     >();
@@ -538,9 +547,12 @@ export class DbStorage implements IStorage {
         applicantEmail: users.email,
         applicantFirstName: users.firstName,
         applicantLastName: users.lastName,
+        applicantAvatar: users.profileImageUrl,
+        applicantProfile: talentProfiles,
       })
       .from(applications)
       .leftJoin(users, eq(applications.userId, users.id))
+      .leftJoin(talentProfiles, eq(talentProfiles.userId, applications.userId))
       .where(inArray(applications.jobId, jobIds))
       .orderBy(desc(applications.createdAt));
 
@@ -558,7 +570,9 @@ export class DbStorage implements IStorage {
           email: row.applicantEmail ?? undefined,
           firstName: row.applicantFirstName ?? undefined,
           lastName: row.applicantLastName ?? undefined,
+          profileImageUrl: row.applicantAvatar ?? undefined,
         },
+        applicantProfile: row.applicantProfile ?? undefined,
       });
     }
 
