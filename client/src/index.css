@@ -15,9 +15,9 @@
   --foreground: 222 47% 11%;
   --border: 214 32% 91%;
 
-  --card: 240 10% 98%;
+  --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
-  --card-border: 220 14% 94%;
+  --card-border: 214 32% 91%;
 
   --sidebar: 240 9% 96%;
   --sidebar-foreground: 222 47% 11%;
@@ -91,7 +91,7 @@
   --destructive-border:     hsl(var(--destructive));
 
   /* Overrides with color-mix (widely supported) */
-  --sidebar-primary-border: color-mix(in oklab, hsl(var(--sidebar-primary)) calc(100% - var(--opaque-button-border-abs)), var(--opaque-button-border-contrast) var(--opaque-button-border-abs));
+  --sidebar-primary-border: color-mix(in oklab, hsl(var(--sidebar-primary))  calc(100% - var(--opaque-button-border-abs)), var(--opaque-button-border-contrast) var(--opaque-button-border-abs));
   --sidebar-accent-border:  color-mix(in oklab, hsl(var(--sidebar-accent))  calc(100% - var(--opaque-button-border-abs)), var(--opaque-button-border-contrast) var(--opaque-button-border-abs));
   --primary-border:         color-mix(in oklab, hsl(var(--primary))         calc(100% - var(--opaque-button-border-abs)), var(--opaque-button-border-contrast) var(--opaque-button-border-abs));
   --secondary-border:       color-mix(in oklab, hsl(var(--secondary))       calc(100% - var(--opaque-button-border-abs)), var(--opaque-button-border-contrast) var(--opaque-button-border-abs));
@@ -108,50 +108,53 @@
   --elevate-1: rgba(255,255,255,.04);
   --elevate-2: rgba(255,255,255,.09);
 
-  --background: 222 47% 11%;
-  --foreground: 213 31% 91%;
-  --border: 217 33% 24%;
+  /* ===== bolt.new-style dark with electric blue primary ===== */
+  --background: 223 39% 7%;
+  --foreground: 210 40% 96%;
+  --border: 225 26% 16%;
 
-  --card: 224 40% 13%;
-  --card-foreground: 213 31% 91%;
-  --card-border: 220 35% 17%;
+  --card: 223 39% 9%;
+  --card-foreground: 210 40% 96%;
+  --card-border: 224 28% 13%;
 
-  --sidebar: 222 44% 9%;
-  --sidebar-foreground: 213 31% 91%;
-  --sidebar-border: 220 38% 14%;
-  --sidebar-primary: 217 91% 60%;
+  --sidebar: 221 39% 11%;
+  --sidebar-foreground: 210 40% 96%;
+  --sidebar-border: 220 28% 14%;
+  --sidebar-primary: 228 100% 62%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 220 18% 15%;
-  --sidebar-accent-foreground: 213 31% 91%;
-  --sidebar-ring: 217 91% 60%;
+  --sidebar-accent: 223 36% 12%;
+  --sidebar-accent-foreground: 210 40% 96%;
+  --sidebar-ring: 228 100% 62%;
 
-  --popover: 224 71% 16%;
-  --popover-foreground: 213 31% 91%;
-  --popover-border: 217 50% 22%;
+  --popover: 221 36% 14%;
+  --popover-foreground: 210 40% 96%;
+  --popover-border: 223 26% 18%;
 
-  --primary: 217 91% 60%;
+  /* Blue primary (buttons/links) */
+  --primary: 228 100% 62%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 220 18% 20%;
-  --secondary-foreground: 213 31% 91%;
+  --secondary: 222 22% 18%;
+  --secondary-foreground: 210 40% 96%;
 
-  --muted: 220 15% 18%;
+  --muted: 222 22% 16%;
   --muted-foreground: 215 20% 65%;
 
-  --accent: 217 16% 19%;
-  --accent-foreground: 213 31% 91%;
+  --accent: 222 20% 17%;
+  --accent-foreground: 210 40% 96%;
 
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
 
-  --input: 217 33% 28%;
-  --ring: 217 91% 60%;
+  --input: 222 26% 22%;
+  --ring: 228 100% 62%;
 
-  --chart-1: 217 91% 65%;
-  --chart-2: 142 76% 45%;
-  --chart-3: 280 89% 66%;
-  --chart-4: 38 92% 60%;
-  --chart-5: 200 89% 58%;
+  /* Charts tuned to the new primary */
+  --chart-1: 228 100% 60%;
+  --chart-2: 142 60% 45%;
+  --chart-3: 280 80% 60%;
+  --chart-4: 38 90% 55%;
+  --chart-5: 200 80% 55%;
 
   --shadow-2xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
   --shadow-xs:  0px 2px 0px 0px hsl(0 0% 0% / 0.00);
@@ -176,7 +179,7 @@
   --destructive-border:     hsl(var(--destructive));
 
   /* Overrides */
-  --sidebar-primary-border: color-mix(in oklab, hsl(var(--sidebar-primary)) calc(100% - var(--opaque-button-border-abs)), var(--opaque-button-border-contrast) var(--opaque-button-border-abs));
+  --sidebar-primary-border: color-mix(in oklab, hsl(var(--sidebar-primary))  calc(100% - var(--opaque-button-border-abs)), var(--opaque-button-border-contrast) var(--opaque-button-border-abs));
   --sidebar-accent-border:  color-mix(in oklab, hsl(var(--sidebar-accent))  calc(100% - var(--opaque-button-border-abs)), var(--opaque-button-border-contrast) var(--opaque-button-border-abs));
   --primary-border:         color-mix(in oklab, hsl(var(--primary))         calc(100% - var(--opaque-button-border-abs)), var(--opaque-button-border-contrast) var(--opaque-button-border-abs));
   --secondary-border:       color-mix(in oklab, hsl(var(--secondary))       calc(100% - var(--opaque-button-border-abs)), var(--opaque-button-border-contrast) var(--opaque-button-border-abs));
@@ -187,93 +190,40 @@
 
 @layer base {
   * { @apply border-border; }
-  body { @apply font-sans antialiased bg-background text-foreground; }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 }
 
-/* =================== UTILITIES =================== */
-@layer utilities {
-
-  /* Hide ugly search cancel button in Chrome until we can style it properly */
-  input[type="search"]::-webkit-search-cancel-button { @apply hidden; }
-
-  /* Placeholder styling for contentEditable div */
-  [contenteditable][data-placeholder]:empty::before {
-    content: attr(data-placeholder);
-    color: hsl(var(--muted-foreground));
-    pointer-events: none;
-  }
-
-  /* Escape hatches to disable default hover/active overlays */
-  .no-default-hover-elevate {}
-  .no-default-active-elevate {}
-
-  /* Toggle surfaces live behind content so hover/active can stack */
-  .toggle-elevate::before,
-  .toggle-elevate-2::before {
-    content: "";
-    pointer-events: none;
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    z-index: -1;
-  }
-  .toggle-elevate.toggle-elevated::before { background-color: var(--elevate-2); }
-
-  /* If there's a 1px border, extend overlay behind it */
-  .border.toggle-elevate::before { inset: -1px; }
-
-  /* Elevation overlays */
-  .hover-elevate:not(.no-default-hover-elevate),
-  .active-elevate:not(.no-default-active-elevate),
-  .hover-elevate-2:not(.no-default-hover-elevate),
-  .active-elevate-2:not(.no-default-active-elevate) {
-    position: relative;
-    z-index: 0;
-  }
-
-  .hover-elevate:not(.no-default-hover-elevate)::after,
-  .active-elevate:not(.no-default-active-elevate)::after,
-  .hover-elevate-2:not(.no-default-hover-elevate)::after,
-  .active-elevate-2:not(.no-default-active-elevate)::after {
-    content: "";
-    pointer-events: none;
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    z-index: 999;
-  }
-
-  .hover-elevate:hover:not(.no-default-hover-elevate)::after,
-  .active-elevate:active:not(.no-default-active-elevate)::after { background-color: var(--elevate-1); }
-
-  .hover-elevate-2:hover:not(.no-default-hover-elevate)::after,
-  .active-elevate-2:active:not(.no-default-active-elevate)::after { background-color: var(--elevate-2); }
-
-  /* Extend overlay behind 1px borders (class names unified, duplicate removed) */
-  .border.hover-elevate:not(.no-default-hover-elevate)::after,
-  .border.active-elevate:not(.no-default-active-elevate)::after,
-  .border.hover-elevate-2:not(.no-default-hover-elevate)::after,
-  .border.active-elevate-2:not(.no-default-active-elevate)::after {
-    inset: -1px;
-  }
-
-  /* ====== Infinite marquee for the chain logo carousel ====== */
-  @keyframes marquee-left {
-    0%   { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
-  }
-  .marquee {
-    display: flex;
-    white-space: nowrap;
-    will-change: transform;
-    animation: marquee-left 20s linear infinite;
-  }
-  .marquee:hover { animation-play-state: paused; }
-}
-
-/* Hide Stripe devtools badge injected by Stripe.js */
 stripe-devtools,
 stripe-devtools-badge,
 [data-stripe-devtools],
 #stripe-devtools-badge,
 .stripe-devtools-badge { display: none !important; }
+
+@keyframes marquee-slide {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); } 
+}
+
+:root {
+  --marquee-duration: 55s; 
+}
+
+@media (min-width: 768px) {
+  :root { --marquee-duration: 75s; }
+}
+
+.marquee {
+  animation: marquee-slide var(--marquee-duration) linear infinite;
+  will-change: transform;
+}
+
+.group:hover .marquee { animation-play-state: paused; }
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee { animation: none; transform: none; }
+}

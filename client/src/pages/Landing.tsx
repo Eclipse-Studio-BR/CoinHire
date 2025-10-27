@@ -10,6 +10,7 @@ import { JobCard } from "@/components/JobCard";
 import type { Job, Company } from "@shared/schema";
 import { Star, Sparkles } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import LogoCarousel from "@/components/LogoCarousel";
 
 export default function Landing() {
   const { data: featuredJobs = [], isLoading: loadingFeatured } =
@@ -24,7 +25,7 @@ export default function Landing() {
 
   const { data: latestJobs = [] } =
     useQuery<(Job & { company?: Company })[]>({
-      queryKey: ["/api/jobs", { latest: true }],
+      queryKey: ["/api/jobs", { latest: true, status: "active" }],
       queryFn: async () => {
         const res = await apiRequest("GET", "/api/jobs?status=active");
         const all = await res.json();
@@ -37,27 +38,76 @@ export default function Landing() {
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <main className="flex-1">
-        {/* ===== Hero ===== */}
-        <section className="relative overflow-hidden border-b">
-          <div className="absolute inset-0 -z-10 bg-gradient-to-b from-background to-muted" />
-          <div className="container mx-auto px-4 py-12 md:py-16">
-            <div className="mx-auto max-w-3xl text-center">
-              <Badge variant="secondary" className="mb-4 inline-flex items-center gap-2">
-                <Sparkles className="h-3.5 w-3.5" />
-                Trusted Web3 & Crypto Jobs
+        {/* ===== Hero (full-color image, bolt style) ===== */}
+        <section
+          className="
+            relative overflow-hidden border-b
+            min-h-[640px] md:min-h-[780px] lg:min-h-[860px]
+            flex items-center
+          "
+        >
+          {/* Full-color background image */}
+          <div className="absolute inset-0 -z-20 bg-[url('/images/hero-image.png')] bg-cover bg-bottom opacity-100" />
+
+          <div className="container mx-auto px-4 py-16 md:py-24">
+            <div className="mx-auto max-w-4xl text-center">
+              {/* Bolt-style translucent badge, slightly raised */}
+              <Badge
+                variant="secondary"
+                className="
+                  relative -top-2 md:-top-4
+                  mb-6 inline-flex items-center gap-2 rounded-full
+                  px-4 md:px-5 py-1.5 md:py-2 text-sm md:text-base font-medium
+                  bg-background/60 backdrop-blur supports-[backdrop-filter]:bg-background/40
+                  border border-white/10
+                  shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_8px_24px_rgba(0,0,0,0.35)]
+                  text-foreground/90
+                "
+              >
+                <Sparkles className="h-4 w-4 opacity-90" />
+                Trusted Web3 &amp; Crypto Jobs
               </Badge>
-              <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-                Find your next role in crypto
+
+              {/* Title with gradient on 'Crypto' */}
+              <h1
+                className="text-4xl md:text-6xl font-extrabold tracking-tight leading-tight"
+                style={{ textShadow: "0 1px 2px rgba(0,0,0,.5)" }}
+              >
+                <span
+                  className="bg-clip-text text-transparent"
+                  style={{
+                    backgroundImage:
+                      "linear-gradient(90deg, #4F86FF 0%, #7AA2FF 45%, #B8CCFF 100%)",
+                  }}
+                >
+                  Crypto
+                </span>{" "}
+                Jobs Portal
               </h1>
-              <p className="mt-3 text-muted-foreground">
-                Search thousands of curated jobs from leading exchanges, L1/L2s, DeFi, wallets &amp; more.
+
+              {/* Subtitle */}
+              <p
+                className="mt-3 text-lg md:text-xl text-muted-foreground"
+                style={{ textShadow: "0 1px 1px rgba(0,0,0,.45)" }}
+              >
+                For Talents and Companies
               </p>
             </div>
 
-            <div className="mx-auto mt-6 max-w-5xl">
+            {/* Search */}
+            <div className="mx-auto mt-8 max-w-5xl">
               <LandingSearch />
-              <div className="mt-3 text-center text-sm text-muted-foreground">
-                Popular: Solidity, Rust, Product Manager, Growth, Security, Research
+            </div>
+
+            {/* Trust bar — animated carousel, placed further down to avoid crowding */}
+            <div className="mx-auto max-w-6xl text-center mt-24 md:mt-36">
+              <div className="text-[13px] md:text-xs tracking-[0.18em] text-foreground/70">
+                CRYPTO JOBS PORTAL TRUSTED BY
+              </div>
+
+              {/* extra space between title and logos */}
+              <div className="mt-8 md:mt-12">
+                <LogoCarousel />
               </div>
             </div>
           </div>
@@ -78,12 +128,14 @@ export default function Landing() {
           {loadingFeatured && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {Array.from({ length: 4 }).map((_, i) => (
-                <Card className="h-32 animate-pulse" key={i}><CardContent className="h-32" /></Card>
+                <Card key={i}>
+                  <CardContent className="h-32 animate-pulse" />
+                </Card>
               ))}
             </div>
           )}
 
-          {!loadingFeatured && (
+          {!loadingFeatured && featuredJobs.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {featuredJobs.slice(0, 6).map((job) => (
                 <JobCard key={job.id} job={job} />
