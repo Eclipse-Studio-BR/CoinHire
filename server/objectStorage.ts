@@ -148,7 +148,8 @@ export class ObjectStorageService {
         isPublic ? `public, max-age=${cacheTtlSec}` : "private, max-age=0, no-store"
       );
       if (!isPublic) {
-        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        // Keep resume/avatar downloads private but let browsers render inline (PDF/image preview)
+        res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
       }
       if (metadata.size) res.setHeader("Content-Length", String(metadata.size));
 

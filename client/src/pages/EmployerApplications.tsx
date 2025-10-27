@@ -239,7 +239,12 @@ export default function EmployerApplications() {
                               <div className="mt-4 flex flex-col gap-2 border-t pt-4 sm:flex-row sm:justify-end">
                                 {application.applicant.email && (
                                   <Button asChild variant="outline">
-                                    <a href={`mailto:${application.applicant.email}`} className="flex items-center gap-2">
+                                    <a
+                                      href={`mailto:${application.applicant.email}`}
+                                      className="flex items-center gap-2"
+                                      target="_blank"
+                                      rel="noreferrer noopener"
+                                    >
                                       <Mail className="h-4 w-4" />
                                       Contact Applicant
                                     </a>
