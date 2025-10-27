@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, and, desc, like, gte, lte, sql, or, inArray } from "drizzle-orm";
+import { eq, and, desc, like, gte, lte, sql, or, inArray, ne } from "drizzle-orm";
 import {
   users,
   companies,
@@ -492,7 +492,7 @@ export class DbStorage implements IStorage {
     const jobsForEmployer = await db
       .select()
       .from(jobs)
-      .where(inArray(jobs.companyId, companyIds));
+      .where(and(inArray(jobs.companyId, companyIds), ne(jobs.status, 'expired')));
     if (jobsForEmployer.length === 0) {
       return [];
     }

@@ -116,7 +116,10 @@ export default function Settings() {
   // when company arrives, set description into the same form block
   useEffect(() => {
     if (isEmployer) {
-      profileForm.setValue("companyDescription", myCompany?.description ?? "");
+      profileForm.setValue("companyDescription", myCompany?.description ?? "", { shouldDirty: false });
+      if (!profileForm.getValues("profileImageUrl") && myCompany?.logo) {
+        profileForm.setValue("profileImageUrl", myCompany.logo, { shouldDirty: false });
+      }
     }
   }, [isEmployer, myCompany, profileForm]);
 
@@ -148,10 +151,18 @@ export default function Settings() {
     },
   });
 
-  // separate mutation for company description (called from the same Save button)
+  // separate mutation for company description/logo (called from the same Save button)
   const companyMutation = useMutation({
-    mutationFn: async ({ id, description }: { id: string; description: string }) => {
-      await apiRequest("PUT", `/api/companies/${id}`, { description });
+    mutationFn: async ({
+      id,
+      description,
+      logo,
+    }: {
+      id: string;
+      description: string;
+      logo?: string | null;
+    }) => {
+      await apiRequest("PUT", `/api/companies/${id}`, { description, logo });
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["/api/employer/companies"] });
@@ -210,11 +221,12 @@ export default function Settings() {
       lastName: values.lastName ?? "",
       profileImageUrl: values.profileImageUrl ?? "",
     });
-    // also update company description if employer
+    // also update company description/logo if employer
     if (isEmployer && myCompany) {
       companyMutation.mutate({
         id: String(myCompany.id),
         description: values.companyDescription ?? "",
+        logo: values.profileImageUrl || null,
       });
     }
   };
