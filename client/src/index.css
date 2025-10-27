@@ -227,3 +227,7 @@ stripe-devtools-badge,
 @media (prefers-reduced-motion: reduce) {
   .marquee { animation: none; transform: none; }
 }
+/* Make any logo image render pure white, regardless of original color */
+.logo-white {
+  filter: brightness(0) invert(1);
+}

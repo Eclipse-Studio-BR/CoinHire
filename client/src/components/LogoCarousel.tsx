@@ -3,47 +3,43 @@ import React from "react";
 /**
  * LogoCarousel
  * - Single-line, infinite marquee (no wrapping).
- * - NO borders/backgrounds around logos.
- * - Edit the `logos` array below to add/remove your brands.
+ * - Uniform tile width so spacing is consistent across different aspect ratios.
+ * - All logos are forced to white via the .logo-white helper class.
+ * - Edit the `logos` array to add/remove brands.
  */
 export default function LogoCarousel() {
-  // 🔧 EDIT THIS LIST with your real logos
   const logos: { src: string; alt: string }[] = [
-    { src: "/images/logos/logo-01.svg", alt: "Logo 1" },
-    { src: "/images/logos/logo-02.svg", alt: "Logo 2" },
-    { src: "/images/logos/logo-03.svg", alt: "Logo 3" },
-    { src: "/images/logos/logo-04.svg", alt: "Logo 4" },
-    { src: "/images/logos/logo-05.svg", alt: "Logo 5" },
-    { src: "/images/logos/logo-06.svg", alt: "Logo 6" },
-    { src: "/images/logos/logo-07.svg", alt: "Logo 7" },
-    { src: "/images/logos/logo-08.svg", alt: "Logo 8" },
-    { src: "/images/logos/logo-09.svg", alt: "Logo 9" },
-    { src: "/images/logos/logo-10.svg", alt: "Logo 10" },
-    { src: "/images/logos/logo-11.svg", alt: "Logo 11" },
-    { src: "/images/logos/logo-12.svg", alt: "Logo 12" },
-    { src: "/images/logos/logo-13.svg", alt: "Logo 13" },
-    { src: "/images/logos/logo-14.svg", alt: "Logo 14" },
-    { src: "/images/logos/logo-15.svg", alt: "Logo 15" },
-    { src: "/images/logos/logo-16.svg", alt: "Logo 16" },
-    { src: "/images/logos/logo-17.svg", alt: "Logo 17" },
-    { src: "/images/logos/logo-18.svg", alt: "Logo 18" },
-    { src: "/images/logos/logo-19.svg", alt: "Logo 19" },
-    { src: "/images/logos/logo-20.svg", alt: "Logo 20" },
+    { src: "/images/logos/coinbase.svg", alt: "coinbase" },
+    { src: "/images/logos/trezor.svg", alt: "trezor" },
+    { src: "/images/logos/chronicle-labs.svg", alt: "chronicle-labs" },
+    { src: "/images/logos/algorand.svg", alt: "algorand" },
+    { src: "/images/logos/chainalysis.svg", alt: "chainalysis" },
+    { src: "/images/logos/stake-fish.svg", alt: "stake-fish" },
+    { src: "/images/logos/ark-invest.svg", alt: "ark-invest" },
+    { src: "/images/logos/bitrefill.svg", alt: "bitrefill" },
+    { src: "/images/logos/p2p.svg", alt: "p2p" },
+    { src: "/images/logos/cmc.svg", alt: "coinmarketcap" },
+    { src: "/images/logos/chainlink.svg", alt: "chainlink" },
+    { src: "/images/logos/binance.svg", alt: "binance" },
   ];
 
-  // Create tiles (no border/background)
+  // Uniform tiles: same width for consistent spacing; logos scale to a fixed height
   const tiles = logos.map((logo, i) => (
-    <img
+    <div
       key={i}
-      src={logo.src}
-      alt={logo.alt}
-      className="h-7 md:h-8 w-auto shrink-0 opacity-85 hover:opacity-100 transition-opacity"
-      loading="lazy"
-      decoding="async"
-    />
+      className="h-10 md:h-11 w-28 md:w-32 shrink-0 flex items-center justify-center"
+    >
+      <img
+        src={logo.src}
+        alt={logo.alt}
+        className="logo-white h-7 md:h-8 w-auto max-w-full opacity-90 hover:opacity-100 transition-opacity"
+        loading="lazy"
+        decoding="async"
+      />
+    </div>
   ));
 
-  // Duplicate once for seamless loop
+  
   const track = [...tiles, ...tiles];
 
   return (
