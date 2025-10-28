@@ -467,11 +467,7 @@ export default function Messages() {
                           asChild
                         >
                           <a 
-                            href={
-                              selectedApp.resumeUrl.startsWith('/uploads/') && window.location.hostname !== 'localhost'
-                                ? selectedApp.resumeUrl.replace('/uploads/', '/objects/uploads/')
-                                : selectedApp.resumeUrl
-                            }
+                            href={selectedApp.resumeUrl}
                             target="_blank" 
                             rel="noreferrer"
                           >

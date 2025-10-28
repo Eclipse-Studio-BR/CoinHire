@@ -233,11 +233,7 @@ export default function EmployerApplications() {
                                   {resumeLink && (
                                     <Button variant="outline" size="sm" asChild>
                                       <a 
-                                        href={
-                                          resumeLink.startsWith('/uploads/') && window.location.hostname !== 'localhost'
-                                            ? resumeLink.replace('/uploads/', '/objects/uploads/')
-                                            : resumeLink
-                                        }
+                                        href={resumeLink}
                                         target="_blank" 
                                         rel="noreferrer" 
                                         className="flex items-center gap-1"
