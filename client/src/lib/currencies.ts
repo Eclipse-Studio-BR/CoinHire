@@ -105,32 +105,92 @@ export async function detectUserCurrency(): Promise<string> {
   try {
     // Try to get user's country from various sources
     
-    // 1. Try browser language/locale
+    // 1. PRIORITY: Check timezone first (most reliable for location)
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    console.log('Detected timezone:', timezone);
+    
+    // Brazilian timezones
+    if (timezone.includes('Sao_Paulo') || 
+        timezone.includes('Fortaleza') || 
+        timezone.includes('Recife') ||
+        timezone.includes('Manaus') ||
+        timezone.includes('Belem') ||
+        timezone.includes('America/Brazil') ||
+        timezone.includes('Brasilia')) {
+      console.log('Detected Brazil from timezone');
+      return 'BRL';
+    }
+    
+    // European timezones
+    if (timezone.includes('Europe/')) {
+      console.log('Detected Europe from timezone');
+      return 'EUR';
+    }
+    
+    // UK timezone
+    if (timezone.includes('London')) {
+      return 'GBP';
+    }
+    
+    // Asian timezones
+    if (timezone.includes('Asia/Tokyo')) {
+      return 'JPY';
+    }
+    if (timezone.includes('Asia/Singapore')) {
+      return 'SGD';
+    }
+    if (timezone.includes('Asia/Kolkata') || timezone.includes('Asia/Mumbai')) {
+      return 'INR';
+    }
+    if (timezone.includes('Asia/Dubai')) {
+      return 'AED';
+    }
+    
+    // Australian timezone
+    if (timezone.includes('Australia/')) {
+      return 'AUD';
+    }
+    
+    // Canadian timezone
+    if (timezone.includes('America/Toronto') || 
+        timezone.includes('America/Vancouver') ||
+        timezone.includes('America/Montreal')) {
+      return 'CAD';
+    }
+    
+    // Mexican timezone
+    if (timezone.includes('America/Mexico')) {
+      return 'MXN';
+    }
+    
+    // Swiss timezone
+    if (timezone.includes('Europe/Zurich')) {
+      return 'CHF';
+    }
+    
+    // 2. FALLBACK: Try browser language/locale
     const locale = navigator.language || 'en-US';
+    console.log('Detected locale:', locale);
     const countryCode = locale.split('-')[1]?.toUpperCase();
     
     if (countryCode) {
       // Find currency for this country
       for (const [currencyCode, config] of Object.entries(SUPPORTED_CURRENCIES)) {
         if (config.countries.includes(countryCode)) {
+          console.log(`Detected ${currencyCode} from locale country code: ${countryCode}`);
           return currencyCode;
         }
       }
     }
-
-    // 2. Try to detect from timezone
-    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (timezone.includes('America/Sao_Paulo') || timezone.includes('America/Fortaleza')) {
-      return 'BRL';
-    }
-    if (timezone.includes('Europe/')) {
-      return 'EUR';
-    }
-    if (timezone.includes('America/') && !timezone.includes('Sao_Paulo')) {
+    
+    // 3. Final fallback - US timezone means USD
+    if (timezone.includes('America/')) {
+      console.log('Detected Americas, defaulting to USD');
       return 'USD';
     }
 
-    // 3. Fallback to USD
+    // 4. Ultimate fallback
+    console.log('No detection worked, defaulting to USD');
     return 'USD';
   } catch (error) {
     console.error('Error detecting currency:', error);
