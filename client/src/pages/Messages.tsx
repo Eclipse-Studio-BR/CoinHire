@@ -464,9 +464,15 @@ export default function Messages() {
                         <Button 
                           className="w-full" 
                           variant="outline"
-                          onClick={() => window.open(selectedApp.resumeUrl!, '_blank')}
+                          asChild
                         >
-                          View Resume
+                          <a 
+                            href={selectedApp.resumeUrl} 
+                            target="_blank" 
+                            rel="noreferrer"
+                          >
+                            View Resume
+                          </a>
                         </Button>
                       )}
 
