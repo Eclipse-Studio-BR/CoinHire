@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { detectUserCurrency, getPriceInCurrency, formatPrice, getCurrencySymbol } from "@/lib/currencies";
 import type { Plan } from "@shared/schema";
 
 let stripePromise: ReturnType<typeof loadStripe> | null = null;
@@ -121,6 +122,8 @@ interface FeatureJobDialogProps {
 
 export function FeatureJobDialog({ open, onOpenChange, jobId }: FeatureJobDialogProps) {
   const [clientSecret, setClientSecret] = useState("");
+  const [userCurrency, setUserCurrency] = useState("USD");
+  const [detectedPrice, setDetectedPrice] = useState(15);
   const stripePromiseValue = useMemo(() => getStripePromise(), []);
   const { toast } = useToast();
 
@@ -132,13 +135,26 @@ export function FeatureJobDialog({ open, onOpenChange, jobId }: FeatureJobDialog
   const activePlan = plans.find(plan => plan.isActive);
   const isCreditPurchase = jobId === 'buy-credits';
 
+  // Detect user's currency when dialog opens
   useEffect(() => {
-    if (!open || !activePlan || !jobId) return;
+    if (open) {
+      detectUserCurrency().then(currency => {
+        setUserCurrency(currency);
+        const price = getPriceInCurrency(currency);
+        setDetectedPrice(price);
+        console.log(`Detected currency: ${currency}, Price: ${price}`);
+      });
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !activePlan || !jobId || !userCurrency) return;
 
     // Only pass jobId if it's an actual job (not 'buy-credits')
     const requestData: any = {
       planId: activePlan.id,
-      amount: activePlan.price,
+      amount: detectedPrice,
+      currency: userCurrency,
     };
     
     if (!isCreditPurchase) {
@@ -153,7 +169,7 @@ export function FeatureJobDialog({ open, onOpenChange, jobId }: FeatureJobDialog
       .catch((error) => {
         console.error("Error creating payment intent:", error);
       });
-  }, [open, activePlan, jobId]);
+  }, [open, activePlan, jobId, userCurrency, detectedPrice]);
 
   if (!clientSecret || !activePlan) {
     return (
@@ -204,11 +220,10 @@ export function FeatureJobDialog({ open, onOpenChange, jobId }: FeatureJobDialog
               <CardContent className="space-y-6">
                 <div className="text-center p-4 bg-muted rounded-lg">
                   <div className="flex items-baseline justify-center gap-2">
-                    <span className="text-4xl font-bold">${(activePlan.price / 100).toFixed(2)}</span>
-                    <span className="text-lg text-muted-foreground">USD</span>
+                    <span className="text-4xl font-bold">{formatPrice(detectedPrice, userCurrency)}</span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-2">
-                    30-day featured listing
+                    30-day featured listing • {userCurrency}
                   </p>
                 </div>
 

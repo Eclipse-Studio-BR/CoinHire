@@ -1221,17 +1221,24 @@ ${company?.name || 'The Team'}`;
   // Create payment intent
   app.post('/api/create-payment-intent', requireAuth, async (req: Request, res: Response) => {
     try {
-      const { planId, amount, jobId } = req.body;
+      const { planId, amount, jobId, currency } = req.body;
 
       const plan = await storage.getPlan(planId);
       if (!plan) {
         return res.status(404).json({ error: 'Plan not found' });
       }
 
+      // Use provided currency or default to USD
+      const paymentCurrency = (currency || 'usd').toLowerCase();
+      const paymentAmount = amount || plan.price;
+
+      console.log(`Creating payment intent: ${paymentAmount} ${paymentCurrency}`);
+
       const metadata: any = {
         userId: req.session.userId!,
         planId: plan.id,
         credits: plan.credits.toString(),
+        currency: paymentCurrency,
       };
 
       // If jobId is provided, this is a job upgrade payment
@@ -1241,13 +1248,14 @@ ${company?.name || 'The Team'}`;
       }
 
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: plan.price,
-        currency: 'usd',
+        amount: paymentAmount,
+        currency: paymentCurrency,
         metadata,
       });
 
       res.json({ clientSecret: paymentIntent.client_secret });
     } catch (error: any) {
+      console.error('Error creating payment intent:', error);
       res.status(500).json({ error: error.message });
     }
   });
