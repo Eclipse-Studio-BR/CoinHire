@@ -1080,7 +1080,9 @@ export default function Messages() {
         </div>
       </main>
 
-      <Footer />
+      <div className="hidden lg:block">
+        <Footer />
+      </div>
 
       {/* Alert Dialogs */}
       <AlertDialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
