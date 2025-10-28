@@ -49,6 +49,7 @@ export const users = pgTable(
     profileImageUrl: varchar("profile_image_url"),
     resumePath: varchar("resume_path", { length: 500 }),
     role: userRoleEnum("role").default("guest").notNull(),
+    lastActiveAt: timestamp("last_active_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
@@ -141,6 +142,7 @@ export const talentProfiles = pgTable("talent_profiles", {
   telegram: varchar("telegram", { length: 255 }),
   resumeUrl: varchar("resume_url", { length: 500 }),
   isPublic: boolean("is_public").default(true).notNull(),
+  lastActiveAt: timestamp("last_active_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

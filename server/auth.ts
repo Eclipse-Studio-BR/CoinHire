@@ -616,6 +616,11 @@ export function registerAuth(app: Express) {
         return res.status(401).json({ error: "Invalid credentials." });
       }
 
+      // Update last active timestamp on login
+      const now = new Date();
+      await pool.query('UPDATE users SET last_active_at = $1 WHERE id = $2', [now, user.id]);
+      await pool.query('UPDATE talent_profiles SET last_active_at = $1 WHERE user_id = $2', [now, user.id]);
+
       await setSessionUser(req, user.id);
       return res.json(toPublicUser(user));
     } catch (error) {
@@ -657,6 +662,10 @@ export function registerAuth(app: Express) {
         adminUser = (await storage.updateUser(adminUser.id, { role: "admin" })) ?? adminUser;
       }
 
+      // Update last active timestamp on login
+      const now = new Date();
+      await pool.query('UPDATE users SET last_active_at = $1 WHERE id = $2', [now, adminUser.id]);
+      
       await setSessionUser(req, adminUser.id);
       return res.json(toPublicUser(adminUser));
     } catch (error) {

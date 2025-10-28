@@ -62,6 +62,32 @@ app.use(express.urlencoded({ extended: false }));
 // Serve uploaded files (note: Railway has no persistent disk for prod)
 app.use("/uploads", express.static("uploads"));
 
+// Track user activity (update lastActiveAt)
+app.use(async (req, res, next) => {
+  if (req.session?.userId) {
+    // Only update every 2 minutes to reduce database load
+    const now = new Date();
+    const lastUpdate = (req.session as any).lastActivityUpdate;
+    
+    if (!lastUpdate || now.getTime() - new Date(lastUpdate).getTime() > 120000) {
+      (req.session as any).lastActivityUpdate = now.toISOString();
+      
+      // Update user's lastActiveAt in background (don't wait)
+      pool.query(
+        'UPDATE users SET last_active_at = $1 WHERE id = $2',
+        [now, req.session.userId]
+      ).catch(err => console.error('Failed to update user activity:', err));
+      
+      // Also update talent profile if exists
+      pool.query(
+        'UPDATE talent_profiles SET last_active_at = $1 WHERE user_id = $2',
+        [now, req.session.userId]
+      ).catch(err => console.error('Failed to update talent profile activity:', err));
+    }
+  }
+  next();
+});
+
 // Request logging for /api (with safe typing)
 app.use((req, res, next) => {
   const start = Date.now();

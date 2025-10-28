@@ -218,6 +218,20 @@ export default function Messages() {
     }
   }, [messages, selectedApplicationId]);
 
+  // Auto-refresh messages and applications every 10 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ["/api/all-application-messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/employer/applications"] });
+      if (selectedApplicationId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/applications/messages", selectedApplicationId] });
+      }
+    }, 10000); // 10 seconds
+
+    return () => clearInterval(interval);
+  }, [selectedApplicationId]);
+
   const formatMessageTime = (date: Date | string) => {
     const messageDate = new Date(date);
     const now = new Date();
@@ -238,6 +252,35 @@ export default function Messages() {
   const formatChatTime = (date: Date | string) => {
     const messageDate = new Date(date);
     return messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatLastSeen = (date: Date | string | undefined) => {
+    if (!date) return 'Offline';
+    
+    const lastSeenDate = new Date(date);
+    if (isNaN(lastSeenDate.getTime())) return 'Offline';
+    
+    const now = new Date();
+    const diffMs = now.getTime() - lastSeenDate.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 5) return 'Online';
+    if (diffMins < 60) return `Last seen ${diffMins}m ago`;
+    if (diffHours < 24) return `Last seen ${diffHours}h ago`;
+    if (diffDays === 1) return 'Last seen yesterday';
+    if (diffDays < 7) return `Last seen ${diffDays}d ago`;
+    return `Last seen ${lastSeenDate.toLocaleDateString()}`;
+  };
+
+  const isUserOnline = (lastActiveAt: Date | string | undefined) => {
+    if (!lastActiveAt) return false;
+    const lastActive = new Date(lastActiveAt);
+    const now = new Date();
+    const diffMs = now.getTime() - lastActive.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    return diffMins < 5; // Consider online if active within last 5 minutes
   };
 
   return (
@@ -305,24 +348,32 @@ export default function Messages() {
                               </Avatar>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between mb-1">
-                                  <h3 className={`font-semibold truncate ${
-                                    app.unreadCount && app.unreadCount > 0 ? 'text-primary' : ''
-                                  }`}>
-                                    {displayName}
-                                  </h3>
+                                  <div className="flex-1 min-w-0">
+                                    <h3 className={`font-semibold truncate ${
+                                      app.unreadCount && app.unreadCount > 0 ? 'text-primary' : ''
+                                    }`}>
+                                      {displayName}
+                                    </h3>
+                                    {isEmployer ? (
+                                      app.applicantProfile?.headline && (
+                                        <p className="text-xs text-muted-foreground truncate">
+                                          {app.applicantProfile.headline}
+                                        </p>
+                                      )
+                                    ) : (
+                                      <p className="text-xs text-muted-foreground">Company</p>
+                                    )}
+                                  </div>
                                   <span className="text-xs text-muted-foreground ml-2 flex-shrink-0">
                                     {formatMessageTime(app.lastMessage?.createdAt || app.createdAt)}
                                   </span>
                                 </div>
-                                <p className="text-sm text-muted-foreground truncate mb-1">
-                                  {app.lastMessage?.message || app.job?.title || 'No messages yet'}
-                                </p>
                                 <div className="flex items-center justify-between">
-                                  <Badge variant={app.status === 'rejected' ? 'destructive' : 'secondary'} className="text-xs">
-                                    {app.status === 'rejected' ? 'Closed' : 'Active'}
-                                  </Badge>
+                                  <p className="text-sm text-muted-foreground truncate flex-1">
+                                    {app.lastMessage?.message || app.job?.title || 'No messages yet'}
+                                  </p>
                                   {app.unreadCount > 0 && (
-                                    <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs font-semibold">
+                                    <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs font-semibold ml-2">
                                       {app.unreadCount}
                                     </div>
                                   )}
@@ -358,15 +409,22 @@ export default function Messages() {
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <h2 className="font-semibold truncate">
-                            {isEmployer 
-                              ? `${selectedApp.applicant?.firstName || ''} ${selectedApp.applicant?.lastName || ''}`.trim() || selectedApp.applicant?.email || 'Applicant'
-                              : selectedApp.job?.company?.name
-                            }
-                          </h2>
-                          <p className="text-sm text-muted-foreground truncate">
-                            {selectedApp.status === 'rejected' ? 'Chat Closed' : 'Online'}
-                          </p>
+                          <div>
+                            <h2 className="font-semibold truncate">
+                              {isEmployer 
+                                ? `${selectedApp.applicant?.firstName || ''} ${selectedApp.applicant?.lastName || ''}`.trim() || selectedApp.applicant?.email || 'Applicant'
+                                : selectedApp.job?.company?.name
+                              }
+                            </h2>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {selectedApp.status === 'rejected' 
+                                ? 'Chat Closed' 
+                                : isEmployer 
+                                  ? formatLastSeen((selectedApp.applicantProfile as any)?.lastActiveAt)
+                                  : 'Company'
+                              }
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -696,15 +754,26 @@ export default function Messages() {
                                 <AvatarImage src={displayAvatar || undefined} />
                                 <AvatarFallback className="text-lg">{displayInitials}</AvatarFallback>
                               </Avatar>
-                              {app.status !== 'rejected' && (
+                              {isUserOnline(isEmployer ? (app.applicantProfile as any)?.lastActiveAt : undefined) && (
                                 <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-background" />
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between mb-1">
-                                <h3 className="font-semibold text-base truncate pr-2">
-                                  {displayName}
-                                </h3>
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-semibold text-base truncate">
+                                    {displayName}
+                                  </h3>
+                                  {isEmployer ? (
+                                    app.applicantProfile?.headline && (
+                                      <p className="text-xs text-muted-foreground truncate">
+                                        {app.applicantProfile.headline}
+                                      </p>
+                                    )
+                                  ) : (
+                                    <p className="text-xs text-muted-foreground">Company</p>
+                                  )}
+                                </div>
                                 <span className="text-xs text-muted-foreground flex-shrink-0">
                                   {formatMessageTime(app.lastMessage?.createdAt || app.createdAt)}
                                 </span>
@@ -745,19 +814,27 @@ export default function Messages() {
                   >
                     <ArrowLeft className="h-5 w-5" />
                   </Button>
-                  <Avatar className="h-10 w-10 flex-shrink-0">
-                    <AvatarImage src={
-                      isEmployer 
-                        ? ((selectedApp?.applicantProfile as any)?.profileImageUrl || selectedApp?.applicant?.profileImageUrl || undefined)
-                        : (selectedApp?.job?.company?.logo || undefined)
-                    } />
-                    <AvatarFallback>
-                      {isEmployer 
-                        ? (selectedApp?.applicant?.firstName?.[0] || selectedApp?.applicant?.email?.[0] || 'A')
-                        : (selectedApp?.job?.company?.name?.[0] || 'C')
-                      }
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="relative flex-shrink-0">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={
+                        isEmployer 
+                          ? ((selectedApp?.applicantProfile as any)?.profileImageUrl || selectedApp?.applicant?.profileImageUrl || undefined)
+                          : (selectedApp?.job?.company?.logo || undefined)
+                      } />
+                      <AvatarFallback>
+                        {isEmployer 
+                          ? (selectedApp?.applicant?.firstName?.[0] || selectedApp?.applicant?.email?.[0] || 'A')
+                          : (selectedApp?.job?.company?.name?.[0] || 'C')
+                        }
+                      </AvatarFallback>
+                    </Avatar>
+                    {isUserOnline(isEmployer 
+                      ? (selectedApp?.applicantProfile as any)?.lastActiveAt 
+                      : undefined
+                    ) && (
+                      <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-background" />
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <h2 className="font-semibold text-base truncate">
                       {isEmployer 
@@ -765,9 +842,14 @@ export default function Messages() {
                         : selectedApp?.job?.company?.name
                       }
                     </h2>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {selectedApp?.status === 'rejected' ? 'Chat Closed' : 'Online'}
-                    </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {selectedApp?.status === 'rejected' 
+                                ? 'Chat Closed' 
+                                : isEmployer 
+                                  ? formatLastSeen((selectedApp?.applicantProfile as any)?.lastActiveAt)
+                                  : 'Company'
+                              }
+                            </p>
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
