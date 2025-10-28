@@ -12,6 +12,7 @@ import {
   plans,
   payments,
   creditLedger,
+  messages,
   type User,
   type InsertUser,
   type Company,
@@ -34,6 +35,8 @@ import {
   type InsertPayment,
   type CreditLedger,
   type InsertCreditLedger,
+  type Message,
+  type InsertMessage,
 } from "@shared/schema";
 
 const DEFAULT_PRICING_PLANS: InsertPlan[] = [
@@ -146,6 +149,12 @@ export interface IStorage {
   getCreditBalance(userId: string): Promise<number>;
   addCredits(entry: InsertCreditLedger): Promise<CreditLedger>;
   deductCredits(entry: InsertCreditLedger): Promise<CreditLedger>;
+
+  // Messages
+  listMessages(applicationId: string): Promise<Message[]>;
+  createMessage(message: InsertMessage): Promise<Message>;
+  markMessagesAsRead(applicationId: string, userId: string): Promise<void>;
+  getUnreadMessageCount(userId: string): Promise<number>;
 
   // Stats
   getDashboardStats(userId: string, role: string): Promise<any>;
@@ -454,11 +463,39 @@ export class DbStorage implements IStorage {
   }
 
   async updateApplication(id: string, updates: Partial<InsertApplication>): Promise<Application | undefined> {
+    // Get the current application to check if status changed
+    const currentApp = await this.getApplication(id);
+    
     const [application] = await db
       .update(applications)
       .set(updates)
       .where(eq(applications.id, id))
       .returning();
+    
+    // If status changed to rejected or withdrawn, decrement the job's applyCount
+    if (application && currentApp && updates.status) {
+      const oldStatus = currentApp.status;
+      const newStatus = updates.status;
+      
+      // If moving from active status to rejected/withdrawn, decrement
+      if (oldStatus !== 'rejected' && oldStatus !== 'withdrawn' && 
+          (newStatus === 'rejected' || newStatus === 'withdrawn')) {
+        await db
+          .update(jobs)
+          .set({ applyCount: sql`GREATEST(0, ${jobs.applyCount} - 1)` })
+          .where(eq(jobs.id, application.jobId));
+      }
+      
+      // If moving from rejected/withdrawn back to active status, increment
+      if ((oldStatus === 'rejected' || oldStatus === 'withdrawn') && 
+          newStatus !== 'rejected' && newStatus !== 'withdrawn') {
+        await db
+          .update(jobs)
+          .set({ applyCount: sql`${jobs.applyCount} + 1` })
+          .where(eq(jobs.id, application.jobId));
+      }
+    }
+    
     return application;
   }
 
@@ -698,6 +735,57 @@ export class DbStorage implements IStorage {
     return ledgerEntry;
   }
 
+  // Messages
+  async listMessages(applicationId: string): Promise<Message[]> {
+    return db
+      .select()
+      .from(messages)
+      .where(eq(messages.applicationId, applicationId))
+      .orderBy(messages.createdAt);
+  }
+
+  async createMessage(insertMessage: InsertMessage): Promise<Message> {
+    const [message] = await db.insert(messages).values(insertMessage).returning();
+    return message;
+  }
+
+  async markMessagesAsRead(applicationId: string, userId: string): Promise<void> {
+    await db
+      .update(messages)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(messages.applicationId, applicationId),
+          ne(messages.senderId, userId)
+        )
+      );
+  }
+
+  async getUnreadMessageCount(userId: string): Promise<number> {
+    // Get all applications for this user
+    const userApplications = await db
+      .select({ id: applications.id })
+      .from(applications)
+      .where(eq(applications.userId, userId));
+    
+    if (userApplications.length === 0) return 0;
+
+    const applicationIds = userApplications.map(app => app.id);
+    
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(messages)
+      .where(
+        and(
+          inArray(messages.applicationId, applicationIds),
+          ne(messages.senderId, userId),
+          eq(messages.isRead, false)
+        )
+      );
+
+    return result[0]?.count || 0;
+  }
+
   // Stats
   async getDashboardStats(userId: string, role: string): Promise<any> {
     if (role === 'talent') {
@@ -727,7 +815,23 @@ export class DbStorage implements IStorage {
 
       const activeJobsCount = userJobs.length;
       const totalViews = userJobs.reduce((sum, job) => sum + job.viewCount, 0);
-      const totalApplications = userJobs.reduce((sum, job) => sum + job.applyCount, 0);
+      
+      // Count only non-rejected applications dynamically
+      const jobIds = userJobs.map(job => job.id);
+      let totalApplications = 0;
+      if (jobIds.length > 0) {
+        const activeApplicationsCount = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(applications)
+          .where(
+            and(
+              inArray(applications.jobId, jobIds),
+              ne(applications.status, 'rejected')
+            )
+          );
+        totalApplications = activeApplicationsCount[0]?.count || 0;
+      }
+      
       const creditsBalance = await this.getCreditBalance(userId);
 
       return {

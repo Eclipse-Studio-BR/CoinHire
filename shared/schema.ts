@@ -159,6 +159,16 @@ export const applications = pgTable("applications", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Messages (for company-talent communication)
+export const messages = pgTable("messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicationId: varchar("application_id").notNull().references(() => applications.id, { onDelete: 'cascade' }),
+  senderId: varchar("sender_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  message: text("message").notNull(),
+  isRead: boolean("is_read").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Saved jobs
 export const savedJobs = pgTable("saved_jobs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -331,6 +341,7 @@ export const insertSavedSearchSchema = createInsertSchema(savedSearches).omit({ 
 export const insertPlanSchema = createInsertSchema(plans).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertCreditLedgerSchema = createInsertSchema(creditLedger).omit({ id: true, createdAt: true });
+export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
 
 // Inferred types
 export type User = typeof users.$inferSelect;
@@ -368,3 +379,6 @@ export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 
 export type CreditLedger = typeof creditLedger.$inferSelect;
 export type InsertCreditLedger = z.infer<typeof insertCreditLedgerSchema>;
+
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;

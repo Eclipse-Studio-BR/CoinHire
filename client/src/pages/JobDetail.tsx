@@ -272,63 +272,98 @@ export default function JobDetail() {
             <div className="lg:col-span-1 space-y-6">
               <Card className="sticky top-24">
                 <CardContent className="pt-6 space-y-4">
-                  {job.externalUrl ? (
-                    <Button asChild className="w-full" size="lg" data-testid="button-apply-external">
-                      <a href={job.externalUrl} target="_blank" rel="noopener noreferrer">
-                        Apply on Company Site
-                        <ExternalLink className="w-4 h-4 ml-2" />
-                      </a>
-                    </Button>
-                  ) : (
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button className="w-full" size="lg" data-testid="button-apply">
-                          Apply for this Job
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-2xl">
-                        <DialogHeader>
-                          <DialogTitle>Apply for {job.title}</DialogTitle>
-                          <DialogDescription>
-                            Submit your application to {job.company?.name}
-                          </DialogDescription>
-                        </DialogHeader>
-                        <form
-                          onSubmit={(e) => {
-                            e.preventDefault();
-                            const formData = new FormData(e.currentTarget);
-                            applyMutation.mutate({
-                              coverLetter: formData.get('coverLetter') as string,
-                              resumeUrl: resumeUrl || undefined,
-                            });
-                          }}
-                          className="space-y-4"
-                        >
-                          <div>
-                            <Label htmlFor="coverLetter">Cover Letter</Label>
-                            <Textarea
-                              id="coverLetter"
-                              name="coverLetter"
-                              placeholder="Tell us why you're a great fit for this role..."
-                              className="min-h-[200px] mt-2"
-                              data-testid="textarea-cover-letter"
-                              required
-                            />
-                          </div>
-                          
-                          <FileUpload
-                            type="resume"
-                            onUploadComplete={setResumeUrl}
-                            label="Resume/CV (Optional)"
-                          />
-                          
-                          <Button type="submit" className="w-full" disabled={applyMutation.isPending} data-testid="button-submit-application">
-                            {applyMutation.isPending ? 'Submitting...' : 'Submit Application'}
+                  <div className="flex gap-2">
+                    {job.applicationMethod === "external" && job.externalUrl ? (
+                      <Button asChild className="flex-1" size="lg" data-testid="button-apply-external">
+                        <a href={job.externalUrl} target="_blank" rel="noopener noreferrer">
+                          Apply
+                          <ExternalLink className="w-4 h-4 ml-2" />
+                        </a>
+                      </Button>
+                    ) : job.applicationMethod === "email" && job.applicationEmail ? (
+                      <Button asChild className="flex-1" size="lg" data-testid="button-apply-email">
+                        <a href={`mailto:${job.applicationEmail}`} target="_blank" rel="noopener noreferrer">
+                          Apply
+                          <ExternalLink className="w-4 h-4 ml-2" />
+                        </a>
+                      </Button>
+                    ) : (
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button className="flex-1" size="lg" data-testid="button-apply">
+                            Apply
                           </Button>
-                        </form>
-                      </DialogContent>
-                    </Dialog>
-                  )}
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl">
+                          <DialogHeader>
+                            <DialogTitle>Apply for {job.title}</DialogTitle>
+                            <DialogDescription>
+                              Submit your application to {job.company?.name}
+                            </DialogDescription>
+                          </DialogHeader>
+                          <form
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              const formData = new FormData(e.currentTarget);
+                              applyMutation.mutate({
+                                coverLetter: formData.get('coverLetter') as string,
+                                resumeUrl: resumeUrl || undefined,
+                              });
+                            }}
+                            className="space-y-4"
+                          >
+                            <div>
+                              <Label htmlFor="coverLetter">Cover Letter</Label>
+                              <Textarea
+                                id="coverLetter"
+                                name="coverLetter"
+                                placeholder="Tell us why you're a great fit for this role..."
+                                className="min-h-[200px] mt-2"
+                                data-testid="textarea-cover-letter"
+                                required
+                              />
+                            </div>
+                            
+                            <FileUpload
+                              type="resume"
+                              onUploadComplete={setResumeUrl}
+                              label="Resume/CV (Optional)"
+                            />
+                            
+                            <Button type="submit" className="w-full" disabled={applyMutation.isPending} data-testid="button-submit-application">
+                              {applyMutation.isPending ? 'Submitting...' : 'Submit Application'}
+                            </Button>
+                          </form>
+                        </DialogContent>
+                      </Dialog>
+                    )}
+
+                    {user?.role === "talent" && user?.resumePath && (
+                      <Button
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                        size="lg"
+                        onClick={() => {
+                          if (!isAuthenticated) {
+                            toast({
+                              title: "Please sign in",
+                              description: "You need to be signed in to apply.",
+                              variant: "destructive",
+                            });
+                            setLocation("/login");
+                            return;
+                          }
+                          applyMutation.mutate({
+                            coverLetter: "Easy Apply - Please see my profile and resume for details.",
+                            resumeUrl: user.resumePath || undefined,
+                          });
+                        }}
+                        disabled={applyMutation.isPending}
+                        data-testid="button-easy-apply"
+                      >
+                        {applyMutation.isPending ? 'Applying...' : 'Easy Apply'}
+                      </Button>
+                    )}
+                  </div>
 
                   <div className="grid grid-cols-2 gap-2">
                     <Button
