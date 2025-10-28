@@ -163,7 +163,7 @@ export default function CompanyDetail() {
                     <div className="flex items-start gap-3">
                       <Users className="w-5 h-5 text-primary mt-0.5" />
                       <div>
-                        <p className="font-medium text-sm">Current Size</p>
+                        <p className="font-medium text-sm">Company Size</p>
                         <p className="text-muted-foreground">{company.currentSize}</p>
                       </div>
                     </div>

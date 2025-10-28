@@ -402,7 +402,7 @@ export default function Settings() {
                             name="currentSize"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Current Size (Optional)</FormLabel>
+                                <FormLabel>Company Size</FormLabel>
                                 <FormControl>
                                   <Select value={field.value} onValueChange={field.onChange}>
                                     <SelectTrigger>

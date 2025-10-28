@@ -76,7 +76,7 @@ const companyFormSchema = z
     companyName: z.string().min(2, "Company name is required"),
     companyLogoPath: z.string().optional().or(z.literal("")),
     companyDescription: z.string().min(20, "Tell us about your company"),
-    currentSize: z.string().optional().or(z.literal("")),
+    currentSize: z.string().min(1, "Company size is required"),
     paymentInCrypto: z.boolean().default(false),
     remoteWorking: z.boolean().default(false),
     website: z.string().url("Enter a valid URL").optional().or(z.literal("")),
@@ -627,401 +627,418 @@ function CompanyRegisterForm({ onBack }: { onBack: () => void }) {
       </CardHeader>
       <CardContent>
         <Form {...companyForm}>
-          <form className="space-y-6" onSubmit={companyForm.handleSubmit(handleSubmit)}>
-            <div className="grid gap-6 md:grid-cols-2">
-              <FormField
-                control={companyForm.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Company email</FormLabel>
-                    <FormControl>
-                      <Input type="email" placeholder="talent@yourcompany.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={companyForm.control}
-                name="companyName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Company name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Crypto Labs" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-2">
-              <FormField
-                control={companyForm.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Choose password</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="********" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={companyForm.control}
-                name="confirmPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Confirm password</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="********" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={companyForm.control}
-              name="companyLogoPath"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Company logo</FormLabel>
-                  <FormControl>
-                    <PublicFileUpload
-                      type="logo"
-                      value={field.value || undefined}
-                      onChange={(val) => field.onChange(val ?? "")}
-                      helperText="SVG or PNG works great."
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={companyForm.control}
-              name="companyDescription"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Company description</FormLabel>
-                  <FormControl>
-                    <Textarea rows={5} placeholder="Tell candidates about your mission, team, and culture." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid gap-6 md:grid-cols-2">
-              <FormField
-                control={companyForm.control}
-                name="currentSize"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Current Size (Optional)</FormLabel>
-                    <FormControl>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select company size" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1-10">1-10</SelectItem>
-                          <SelectItem value="11-50">11-50</SelectItem>
-                          <SelectItem value="51-100">51-100</SelectItem>
-                          <SelectItem value="101-500">101-500</SelectItem>
-                          <SelectItem value="500+">500+</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="space-y-4">
+          <form className="space-y-8" onSubmit={companyForm.handleSubmit(handleSubmit)}>
+            {/* Account Details Section */}
+            <div className="space-y-4">
+              <div className="grid gap-6 md:grid-cols-2">
                 <FormField
                   control={companyForm.control}
-                  name="paymentInCrypto"
+                  name="email"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                      <div className="space-y-0.5">
-                        <FormLabel>Payment in Crypto</FormLabel>
-                      </div>
+                    <FormItem>
+                      <FormLabel>Company email</FormLabel>
                       <FormControl>
-                        <input
-                          type="checkbox"
-                          checked={field.value}
-                          onChange={field.onChange}
-                          className="h-4 w-4"
-                        />
+                        <Input type="email" placeholder="talent@yourcompany.com" {...field} />
                       </FormControl>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
                 <FormField
                   control={companyForm.control}
-                  name="remoteWorking"
+                  name="companyName"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                      <div className="space-y-0.5">
-                        <FormLabel>Remote Working</FormLabel>
-                      </div>
+                    <FormItem>
+                      <FormLabel>Company name</FormLabel>
                       <FormControl>
-                        <input
-                          type="checkbox"
-                          checked={field.value}
-                          onChange={field.onChange}
-                          className="h-4 w-4"
-                        />
+                        <Input placeholder="Crypto Labs" {...field} />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                <FormField
+                  control={companyForm.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Choose password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="********" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={companyForm.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirm password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="********" {...field} />
+                      </FormControl>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
-              <FormField
-                control={companyForm.control}
-                name="website"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Website (Optional)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="https://yourcompany.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={companyForm.control}
-                name="twitter"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Twitter / X (Optional)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="https://twitter.com/yourcompany" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            {/* Company Info Section */}
+            <div className="space-y-4">
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold text-primary mb-4">Company Info</h3>
+              </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
               <FormField
                 control={companyForm.control}
-                name="discord"
+                name="companyLogoPath"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Discord (Optional)</FormLabel>
+                    <FormLabel>Company logo</FormLabel>
                     <FormControl>
-                      <Input placeholder="https://discord.gg/yourserver" {...field} />
+                      <PublicFileUpload
+                        type="logo"
+                        value={field.value || undefined}
+                        onChange={(val) => field.onChange(val ?? "")}
+                        helperText="SVG or PNG works great."
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={companyForm.control}
-                name="telegram"
+                name="companyDescription"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Telegram (Optional)</FormLabel>
+                    <FormLabel>Company description</FormLabel>
                     <FormControl>
-                      <Input placeholder="@yourcompany or https://t.me/yourgroup" {...field} />
+                      <Textarea rows={5} placeholder="Tell candidates about your mission, team, and culture." {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            </div>
 
-            <FormField
-              control={companyForm.control}
-              name="jobTitle"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Job title</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Lead Protocol Engineer" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={companyForm.control}
-              name="jobDescription"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Job description</FormLabel>
-                  <FormControl>
-                    <Textarea rows={6} placeholder="Describe the role, responsibilities and impact" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={companyForm.control}
-              name="jobLocation"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Job location</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Remote or City, Country" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid gap-6 md:grid-cols-2">
-              <FormField
-                control={companyForm.control}
-                name="salaryMin"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Salary min</FormLabel>
-                    <FormControl>
-                      <Input type="number" min="0" placeholder="80000" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={companyForm.control}
-                name="salaryMax"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Salary max</FormLabel>
-                    <FormControl>
-                      <Input type="number" min="0" placeholder="140000" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-2">
-              <FormField
-                control={companyForm.control}
-                name="salaryCurrency"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Currency</FormLabel>
-                    <FormControl>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Currency" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {currencyOptions.map((currency) => (
-                            <SelectItem key={currency.value} value={currency.value}>
-                              {currency.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={companyForm.control}
-                name="salaryPeriod"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Period</FormLabel>
-                    <FormControl>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select period" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {periodOptions.map((period) => (
-                            <SelectItem key={period.value} value={period.value}>
-                              {period.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={companyForm.control}
-              name="applicationMethod"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Application method</FormLabel>
-                  <FormControl>
-                    <RadioGroup value={field.value} onValueChange={field.onChange} className="flex gap-4">
-                      <FormItem className="flex items-center space-x-2 space-y-0">
+              <div className="grid gap-6 md:grid-cols-2">
+                <FormField
+                  control={companyForm.control}
+                  name="currentSize"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Company Size</FormLabel>
+                      <FormControl>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select company size" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1-10">1-10</SelectItem>
+                            <SelectItem value="11-50">11-50</SelectItem>
+                            <SelectItem value="51-100">51-100</SelectItem>
+                            <SelectItem value="101-500">101-500</SelectItem>
+                            <SelectItem value="500+">500+</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="space-y-4">
+                  <FormField
+                    control={companyForm.control}
+                    name="paymentInCrypto"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                        <div className="space-y-0.5">
+                          <FormLabel>Payment in Crypto</FormLabel>
+                        </div>
                         <FormControl>
-                          <RadioGroupItem value="email" />
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={field.onChange}
+                            className="h-4 w-4"
+                          />
                         </FormControl>
-                        <FormLabel className="font-normal">Email</FormLabel>
                       </FormItem>
-                      <FormItem className="flex items-center space-x-2 space-y-0">
+                    )}
+                  />
+                  <FormField
+                    control={companyForm.control}
+                    name="remoteWorking"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                        <div className="space-y-0.5">
+                          <FormLabel>Remote Working</FormLabel>
+                        </div>
                         <FormControl>
-                          <RadioGroupItem value="external" />
+                          <input
+                            type="checkbox"
+                            checked={field.value}
+                            onChange={field.onChange}
+                            className="h-4 w-4"
+                          />
                         </FormControl>
-                        <FormLabel className="font-normal">External link</FormLabel>
                       </FormItem>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    )}
+                  />
+                </div>
+              </div>
 
-            {companyForm.watch("applicationMethod") === "email" ? (
+              <div className="grid gap-6 md:grid-cols-2">
+                <FormField
+                  control={companyForm.control}
+                  name="website"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Website (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="https://yourcompany.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={companyForm.control}
+                  name="twitter"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Twitter / X (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="https://twitter.com/yourcompany" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                <FormField
+                  control={companyForm.control}
+                  name="discord"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Discord (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="https://discord.gg/yourserver" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={companyForm.control}
+                  name="telegram"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Telegram (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="@yourcompany or https://t.me/yourgroup" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* Post your first Job Section */}
+            <div className="space-y-4">
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold text-primary mb-4">Post your first Job</h3>
+              </div>
+
               <FormField
                 control={companyForm.control}
-                name="applicationEmail"
+                name="jobTitle"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Application email</FormLabel>
+                    <FormLabel>Job title</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="jobs@yourcompany.com" {...field} />
+                      <Input placeholder="Lead Protocol Engineer" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            ) : (
+
               <FormField
                 control={companyForm.control}
-                name="applicationUrl"
+                name="jobDescription"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Application link</FormLabel>
+                    <FormLabel>Job description</FormLabel>
                     <FormControl>
-                      <Input placeholder="https://yourcompany.com/careers/apply" {...field} />
+                      <Textarea rows={6} placeholder="Describe the role, responsibilities and impact" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            )}
+
+              <FormField
+                control={companyForm.control}
+                name="jobLocation"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Job location</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Remote or City, Country" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid gap-6 md:grid-cols-2">
+                <FormField
+                  control={companyForm.control}
+                  name="salaryMin"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Salary min</FormLabel>
+                      <FormControl>
+                        <Input type="number" min="0" placeholder="80000" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={companyForm.control}
+                  name="salaryMax"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Salary max</FormLabel>
+                      <FormControl>
+                        <Input type="number" min="0" placeholder="140000" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                <FormField
+                  control={companyForm.control}
+                  name="salaryCurrency"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Currency</FormLabel>
+                      <FormControl>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Currency" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {currencyOptions.map((currency) => (
+                              <SelectItem key={currency.value} value={currency.value}>
+                                {currency.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={companyForm.control}
+                  name="salaryPeriod"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Period</FormLabel>
+                      <FormControl>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select period" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {periodOptions.map((period) => (
+                              <SelectItem key={period.value} value={period.value}>
+                                {period.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={companyForm.control}
+                name="applicationMethod"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Application method</FormLabel>
+                    <FormControl>
+                      <RadioGroup value={field.value} onValueChange={field.onChange} className="flex gap-4">
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="email" />
+                          </FormControl>
+                          <FormLabel className="font-normal">Email</FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="external" />
+                          </FormControl>
+                          <FormLabel className="font-normal">External link</FormLabel>
+                        </FormItem>
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {companyForm.watch("applicationMethod") === "email" ? (
+                <FormField
+                  control={companyForm.control}
+                  name="applicationEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Application email</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="jobs@yourcompany.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : (
+                <FormField
+                  control={companyForm.control}
+                  name="applicationUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Application link</FormLabel>
+                      <FormControl>
+                        <Input placeholder="https://yourcompany.com/careers/apply" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
 
             <Button type="submit" className="w-full" disabled={companyForm.formState.isSubmitting}>
               {companyForm.formState.isSubmitting ? "Creating company..." : "Create company & post job"}
