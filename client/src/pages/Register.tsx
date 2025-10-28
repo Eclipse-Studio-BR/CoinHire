@@ -76,6 +76,13 @@ const companyFormSchema = z
     companyName: z.string().min(2, "Company name is required"),
     companyLogoPath: z.string().optional().or(z.literal("")),
     companyDescription: z.string().min(20, "Tell us about your company"),
+    currentSize: z.string().optional().or(z.literal("")),
+    paymentInCrypto: z.boolean().default(false),
+    remoteWorking: z.boolean().default(false),
+    website: z.string().url("Enter a valid URL").optional().or(z.literal("")),
+    twitter: z.string().url("Enter a valid URL").optional().or(z.literal("")),
+    discord: z.string().url("Enter a valid URL").optional().or(z.literal("")),
+    telegram: z.string().optional().or(z.literal("")),
     jobTitle: z.string().min(2, "Job title is required"),
     jobDescription: z.string().min(50, "Provide a detailed job description"),
     jobLocation: z.string().min(2, "Location is required"),
@@ -86,8 +93,6 @@ const companyFormSchema = z
     applicationMethod: z.enum(["email", "external"]),
     applicationEmail: z.string().email("Enter a valid email").optional().or(z.literal("")),
     applicationUrl: z.string().url("Enter a valid URL").optional().or(z.literal("")),
-    website: z.string().url("Enter a valid URL").optional().or(z.literal("")),
-    twitter: z.string().url("Enter a valid URL").optional().or(z.literal("")),
   })
   .superRefine((data, ctx) => {
     if (data.password !== data.confirmPassword) {
@@ -544,6 +549,13 @@ function CompanyRegisterForm({ onBack }: { onBack: () => void }) {
       companyName: "",
       companyLogoPath: "",
       companyDescription: "",
+      currentSize: "",
+      paymentInCrypto: false,
+      remoteWorking: false,
+      website: "",
+      twitter: "",
+      discord: "",
+      telegram: "",
       jobTitle: "",
       jobDescription: "",
       jobLocation: "",
@@ -554,8 +566,6 @@ function CompanyRegisterForm({ onBack }: { onBack: () => void }) {
       applicationMethod: "email",
       applicationEmail: "",
       applicationUrl: "",
-      website: "",
-      twitter: "",
     },
   });
   const { toast } = useToast();
@@ -569,6 +579,13 @@ function CompanyRegisterForm({ onBack }: { onBack: () => void }) {
       companyName: values.companyName,
       companyLogoPath: values.companyLogoPath || undefined,
       companyDescription: values.companyDescription,
+      currentSize: values.currentSize || undefined,
+      paymentInCrypto: values.paymentInCrypto,
+      remoteWorking: values.remoteWorking,
+      website: values.website || undefined,
+      twitter: values.twitter || undefined,
+      discord: values.discord || undefined,
+      telegram: values.telegram || undefined,
       jobTitle: values.jobTitle,
       jobDescription: values.jobDescription,
       jobLocation: values.jobLocation,
@@ -579,8 +596,6 @@ function CompanyRegisterForm({ onBack }: { onBack: () => void }) {
       applicationMethod: values.applicationMethod,
       applicationEmail: values.applicationMethod === "email" ? values.applicationEmail : undefined,
       applicationUrl: values.applicationMethod === "external" ? values.applicationUrl : undefined,
-      website: values.website || undefined,
-      twitter: values.twitter || undefined,
     };
 
     try {
@@ -703,6 +718,131 @@ function CompanyRegisterForm({ onBack }: { onBack: () => void }) {
                 </FormItem>
               )}
             />
+
+            <div className="grid gap-6 md:grid-cols-2">
+              <FormField
+                control={companyForm.control}
+                name="currentSize"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Current Size (Optional)</FormLabel>
+                    <FormControl>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select company size" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1-10">1-10</SelectItem>
+                          <SelectItem value="11-50">11-50</SelectItem>
+                          <SelectItem value="51-100">51-100</SelectItem>
+                          <SelectItem value="101-500">101-500</SelectItem>
+                          <SelectItem value="500+">500+</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="space-y-4">
+                <FormField
+                  control={companyForm.control}
+                  name="paymentInCrypto"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <FormLabel>Payment in Crypto</FormLabel>
+                      </div>
+                      <FormControl>
+                        <input
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={field.onChange}
+                          className="h-4 w-4"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={companyForm.control}
+                  name="remoteWorking"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <FormLabel>Remote Working</FormLabel>
+                      </div>
+                      <FormControl>
+                        <input
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={field.onChange}
+                          className="h-4 w-4"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+              <FormField
+                control={companyForm.control}
+                name="website"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Website (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="https://yourcompany.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={companyForm.control}
+                name="twitter"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Twitter / X (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="https://twitter.com/yourcompany" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+              <FormField
+                control={companyForm.control}
+                name="discord"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Discord (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="https://discord.gg/yourserver" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={companyForm.control}
+                name="telegram"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Telegram (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="@yourcompany or https://t.me/yourgroup" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={companyForm.control}
@@ -882,35 +1022,6 @@ function CompanyRegisterForm({ onBack }: { onBack: () => void }) {
                 )}
               />
             )}
-
-            <div className="grid gap-6 md:grid-cols-2">
-              <FormField
-                control={companyForm.control}
-                name="website"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Website</FormLabel>
-                    <FormControl>
-                      <Input placeholder="https://yourcompany.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={companyForm.control}
-                name="twitter"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Twitter / X</FormLabel>
-                    <FormControl>
-                      <Input placeholder="https://twitter.com/yourcompany" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
 
             <Button type="submit" className="w-full" disabled={companyForm.formState.isSubmitting}>
               {companyForm.formState.isSubmitting ? "Creating company..." : "Create company & post job"}

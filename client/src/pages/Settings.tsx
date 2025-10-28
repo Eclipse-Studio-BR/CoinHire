@@ -25,6 +25,13 @@ const profileFormSchema = z.object({
   profileImageUrl: z.string().max(500, "Profile image URL is too long").optional(),
   // shown only for employers but safe to include in schema
   companyDescription: z.string().max(2000, "Description is too long").optional(),
+  currentSize: z.string().optional(),
+  paymentInCrypto: z.boolean().optional(),
+  remoteWorking: z.boolean().optional(),
+  website: z.string().url("Enter a valid URL").optional().or(z.literal("")),
+  twitter: z.string().url("Enter a valid URL").optional().or(z.literal("")),
+  discord: z.string().url("Enter a valid URL").optional().or(z.literal("")),
+  telegram: z.string().optional().or(z.literal("")),
 });
 
 const passwordFormSchema = z.object({
@@ -115,9 +122,16 @@ export default function Settings() {
 
   // when company arrives, set description into the same form block
   useEffect(() => {
-    if (isEmployer) {
-      profileForm.setValue("companyDescription", myCompany?.description ?? "", { shouldDirty: false });
-      if (!profileForm.getValues("profileImageUrl") && myCompany?.logo) {
+    if (isEmployer && myCompany) {
+      profileForm.setValue("companyDescription", myCompany.description ?? "", { shouldDirty: false });
+      profileForm.setValue("currentSize", myCompany.currentSize ?? "", { shouldDirty: false });
+      profileForm.setValue("paymentInCrypto", myCompany.paymentInCrypto ?? false, { shouldDirty: false });
+      profileForm.setValue("remoteWorking", myCompany.remoteWorking ?? false, { shouldDirty: false });
+      profileForm.setValue("website", myCompany.website ?? "", { shouldDirty: false });
+      profileForm.setValue("twitter", myCompany.twitter ?? "", { shouldDirty: false });
+      profileForm.setValue("discord", myCompany.discord ?? "", { shouldDirty: false });
+      profileForm.setValue("telegram", myCompany.telegram ?? "", { shouldDirty: false });
+      if (!profileForm.getValues("profileImageUrl") && myCompany.logo) {
         profileForm.setValue("profileImageUrl", myCompany.logo, { shouldDirty: false });
       }
     }
@@ -157,16 +171,40 @@ export default function Settings() {
       id,
       description,
       logo,
+      currentSize,
+      paymentInCrypto,
+      remoteWorking,
+      website,
+      twitter,
+      discord,
+      telegram,
     }: {
       id: string;
       description: string;
       logo?: string | null;
+      currentSize?: string;
+      paymentInCrypto?: boolean;
+      remoteWorking?: boolean;
+      website?: string;
+      twitter?: string;
+      discord?: string;
+      telegram?: string;
     }) => {
-      await apiRequest("PUT", `/api/companies/${id}`, { description, logo });
+      await apiRequest("PUT", `/api/companies/${id}`, { 
+        description, 
+        logo,
+        currentSize: currentSize || undefined,
+        paymentInCrypto,
+        remoteWorking,
+        website: website || undefined,
+        twitter: twitter || undefined,
+        discord: discord || undefined,
+        telegram: telegram || undefined,
+      });
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["/api/employer/companies"] });
-      toast({ title: "Company updated", description: "Description saved." });
+      toast({ title: "Company updated", description: "Company information saved." });
     },
     onError: (error: Error) => {
       toast({ title: "Unable to update company", description: error.message, variant: "destructive" });
@@ -227,6 +265,13 @@ export default function Settings() {
         id: String(myCompany.id),
         description: values.companyDescription ?? "",
         logo: values.profileImageUrl || null,
+        currentSize: values.currentSize,
+        paymentInCrypto: values.paymentInCrypto,
+        remoteWorking: values.remoteWorking,
+        website: values.website,
+        twitter: values.twitter,
+        discord: values.discord,
+        telegram: values.telegram,
       });
     }
   };
@@ -331,24 +376,151 @@ export default function Settings() {
 
                     {/* Employer-only: company description in the SAME block */}
                     {isEmployer && (
-                      <FormField
-                        control={profileForm.control}
-                        name="companyDescription"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Company description</FormLabel>
-                            <FormControl>
-                              <Textarea
-                                rows={4}
-                                placeholder="Tell candidates about your mission, culture, and products."
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormDescription>This appears on your company page.</FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      <>
+                        <FormField
+                          control={profileForm.control}
+                          name="companyDescription"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Company description</FormLabel>
+                              <FormControl>
+                                <Textarea
+                                  rows={4}
+                                  placeholder="Tell candidates about your mission, culture, and products."
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormDescription>This appears on your company page.</FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="grid gap-6 md:grid-cols-2">
+                          <FormField
+                            control={profileForm.control}
+                            name="currentSize"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Current Size (Optional)</FormLabel>
+                                <FormControl>
+                                  <Select value={field.value} onValueChange={field.onChange}>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select company size" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="1-10">1-10</SelectItem>
+                                      <SelectItem value="11-50">11-50</SelectItem>
+                                      <SelectItem value="51-100">51-100</SelectItem>
+                                      <SelectItem value="101-500">101-500</SelectItem>
+                                      <SelectItem value="500+">500+</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <div className="space-y-4">
+                            <FormField
+                              control={profileForm.control}
+                              name="paymentInCrypto"
+                              render={({ field }) => (
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                                  <div className="space-y-0.5">
+                                    <FormLabel>Payment in Crypto</FormLabel>
+                                  </div>
+                                  <FormControl>
+                                    <input
+                                      type="checkbox"
+                                      checked={field.value || false}
+                                      onChange={field.onChange}
+                                      className="h-4 w-4"
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={profileForm.control}
+                              name="remoteWorking"
+                              render={({ field }) => (
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                                  <div className="space-y-0.5">
+                                    <FormLabel>Remote Working</FormLabel>
+                                  </div>
+                                  <FormControl>
+                                    <input
+                                      type="checkbox"
+                                      checked={field.value || false}
+                                      onChange={field.onChange}
+                                      className="h-4 w-4"
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid gap-6 md:grid-cols-2">
+                          <FormField
+                            control={profileForm.control}
+                            name="website"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Website (Optional)</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="https://yourcompany.com" {...field} value={field.value ?? ""} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={profileForm.control}
+                            name="twitter"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Twitter / X (Optional)</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="https://twitter.com/yourcompany" {...field} value={field.value ?? ""} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <div className="grid gap-6 md:grid-cols-2">
+                          <FormField
+                            control={profileForm.control}
+                            name="discord"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Discord (Optional)</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="https://discord.gg/yourserver" {...field} value={field.value ?? ""} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={profileForm.control}
+                            name="telegram"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Telegram (Optional)</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="@yourcompany or https://t.me/yourgroup" {...field} value={field.value ?? ""} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </>
                     )}
 
                     <div className="flex flex-wrap justify-end gap-3">
