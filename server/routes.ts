@@ -367,8 +367,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const jobsList = await storage.listJobs(filters);
 
+      // Auto-expire jobs that have passed their expiresAt date
+      const now = new Date();
+      const validJobs = jobsList.filter(job => {
+        if (job.expiresAt && new Date(job.expiresAt) <= now) {
+          // Expire the job automatically
+          storage.expireJob(job.id).catch(err => console.error('Error expiring job:', err));
+          return false;
+        }
+        return true;
+      });
+
       const jobsWithCompanies = await Promise.all(
-        jobsList.map(async (job) => {
+        validJobs.map(async (job) => {
           const company = await storage.getCompany(job.companyId);
           return { ...job, company };
         })
@@ -412,10 +423,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const now = new Date();
       const visibilityDays = validatedData.visibilityDays ?? 30;
+      
+      // Always create jobs as 'normal' tier - users must explicitly upgrade to featured
       const job = await storage.createJob({
         ...validatedData,
         status: 'active',
-        tier: validatedData.tier ?? 'normal',
+        tier: 'normal', // Always start as normal/free tier
         visibilityDays,
         publishedAt: now,
         expiresAt: new Date(now.getTime() + visibilityDays * 24 * 60 * 60 * 1000),
@@ -1208,25 +1221,112 @@ ${company?.name || 'The Team'}`;
   // Create payment intent
   app.post('/api/create-payment-intent', requireAuth, async (req: Request, res: Response) => {
     try {
-      const { planId, amount } = req.body;
+      const { planId, amount, jobId } = req.body;
 
       const plan = await storage.getPlan(planId);
       if (!plan) {
         return res.status(404).json({ error: 'Plan not found' });
       }
 
+      const metadata: any = {
+        userId: req.session.userId!,
+        planId: plan.id,
+        credits: plan.credits.toString(),
+      };
+
+      // If jobId is provided, this is a job upgrade payment
+      if (jobId) {
+        metadata.jobId = jobId;
+        metadata.upgradeToFeatured = 'true';
+      }
+
       const paymentIntent = await stripe.paymentIntents.create({
         amount: plan.price,
         currency: 'usd',
-        metadata: {
-          userId: req.session.userId!,
-          planId: plan.id,
-          credits: plan.credits.toString(),
-        },
+        metadata,
       });
 
       res.json({ clientSecret: paymentIntent.client_secret });
     } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Add credits after payment
+  app.post('/api/credits/add', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Get current stats to know current balance
+      const stats = await storage.getDashboardStats(req.session.userId!, user.role);
+      const currentBalance = stats.creditsBalance || 0;
+      
+      // Add 1 credit
+      await storage.addCredits({
+        userId: req.session.userId!,
+        amount: 1,
+        tier: 'normal',
+        balance: currentBalance + 1,
+        reason: 'Purchased 1 credit',
+      });
+
+      console.log(`✅ Added 1 credit to user ${req.session.userId}`);
+
+      res.json({ success: true, newBalance: currentBalance + 1 });
+    } catch (error: any) {
+      console.error('Error adding credits:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Upgrade job to featured (after payment confirmation or using credits)
+  app.post('/api/jobs/:id/upgrade-featured', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const job = await storage.getJob(req.params.id);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+
+      // Check ownership
+      const isMember = await storage.isCompanyMember(req.session.userId!, job.companyId);
+      const user = await storage.getUser(req.session.userId!);
+      
+      if (!isMember && user?.role !== 'admin') {
+        return res.status(403).json({ error: 'You do not have permission to upgrade this job' });
+      }
+
+      // Check if user has credits - deduct 1 credit if they do
+      const stats = await storage.getDashboardStats(req.session.userId!, user!.role);
+      if (stats.creditsBalance && stats.creditsBalance > 0) {
+        // Deduct 1 credit
+        await storage.addCredits({
+          userId: req.session.userId!,
+          amount: -1,
+          tier: 'featured',
+          balance: stats.creditsBalance - 1,
+          reason: `Featured job: ${job.title}`,
+        });
+        console.log(`✅ Deducted 1 credit from user ${req.session.userId}`);
+      }
+
+      // Upgrade to featured
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      
+      const updatedJob = await storage.updateJob(req.params.id, {
+        tier: 'featured',
+        expiresAt,
+        visibilityDays: 30,
+      });
+
+      console.log(`✅ Job ${req.params.id} upgraded to featured`);
+
+      res.json(updatedJob);
+    } catch (error: any) {
+      console.error('Error upgrading job:', error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -1245,16 +1345,21 @@ ${company?.name || 'The Team'}`;
       );
     } catch (err: any) {
       console.error('Webhook signature verification failed:', err.message);
+      console.error('Make sure STRIPE_WEBHOOK_SECRET is configured correctly');
       return res.status(400).send(`Webhook Error: ${err.message}`);
     }
+
+    console.log('✅ Webhook event received:', event.type);
 
     // Handle the event
     if (event.type === 'payment_intent.succeeded') {
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
+      console.log('Payment intent metadata:', paymentIntent.metadata);
 
       // Check if payment already processed
       const existing = await storage.getPaymentByStripeId(paymentIntent.id);
       if (existing) {
+        console.log('Payment already processed, skipping');
         return res.json({ received: true });
       }
 
@@ -1266,17 +1371,44 @@ ${company?.name || 'The Team'}`;
         amount: paymentIntent.amount,
         status: 'completed',
       });
+      console.log('Payment record created:', payment.id);
 
-      // Add credits to user's account
-      const credits = parseInt(paymentIntent.metadata.credits || '0');
-      await storage.addCredits({
-        userId: paymentIntent.metadata.userId,
-        amount: credits,
-        tier: 'normal' as const,
-        balance: credits,
-        reason: `Purchased ${credits} credits`,
-        paymentId: payment.id,
-      });
+      // Check if this is a job upgrade payment
+      if (paymentIntent.metadata.jobId && paymentIntent.metadata.upgradeToFeatured === 'true') {
+        console.log(`🌟 Upgrading job ${paymentIntent.metadata.jobId} to featured`);
+        
+        // Upgrade job to featured
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+        
+        try {
+          await storage.updateJob(paymentIntent.metadata.jobId, {
+            tier: 'featured',
+            expiresAt,
+            visibilityDays: 30,
+          });
+          
+          console.log(`✅ Job ${paymentIntent.metadata.jobId} successfully upgraded to featured`);
+          console.log(`Expires at: ${expiresAt.toISOString()}`);
+        } catch (error) {
+          console.error(`❌ Error upgrading job ${paymentIntent.metadata.jobId}:`, error);
+        }
+      } else {
+        // Add credits to user's account (regular credit purchase)
+        const credits = parseInt(paymentIntent.metadata.credits || '0');
+        console.log(`Adding ${credits} credits to user ${paymentIntent.metadata.userId}`);
+        
+        await storage.addCredits({
+          userId: paymentIntent.metadata.userId,
+          amount: credits,
+          tier: 'normal' as const,
+          balance: credits,
+          reason: `Purchased ${credits} credits`,
+          paymentId: payment.id,
+        });
+        
+        console.log(`✅ Credits added successfully`);
+      }
     }
 
     res.json({ received: true });

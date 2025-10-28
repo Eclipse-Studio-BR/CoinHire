@@ -23,13 +23,33 @@ import {
   Bookmark,
   Plus,
   MessageSquare,
+  Star,
+  Pencil,
+  Trash2,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { FeatureJobDialog } from "@/components/FeatureJobDialog";
 import type { Application, Job, Company, SavedJob } from "@shared/schema";
 import { formatTimeAgo } from "@/lib/utils";
 import { APPLICATION_STATUSES } from "@/lib/constants";
@@ -58,10 +78,34 @@ type EmployerJobWithCounts = Job & {
 export default function Dashboard() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const [jobBeingDeleted, setJobBeingDeleted] = useState<string | null>(null);
   const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
+  const [featureJobId, setFeatureJobId] = useState<string | null>(null);
+  const [confirmFeatureJobId, setConfirmFeatureJobId] = useState<string | null>(null);
+
+  // Check for successful payment redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const featuredJobId = params.get('featured');
+    const paymentStatus = params.get('redirect_status');
+    
+    if (featuredJobId && paymentStatus === 'succeeded') {
+      toast({
+        title: "✅ Payment Successful!",
+        description: "Your job has been upgraded to Featured status.",
+        className: "bg-green-600 text-white",
+      });
+      
+      // Invalidate queries to refresh job list
+      queryClient.invalidateQueries({ queryKey: ["/api/employer/jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      
+      // Clean up URL
+      window.history.replaceState({}, '', '/dashboard');
+    }
+  }, [toast]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -342,15 +386,17 @@ export default function Dashboard() {
                     <CardTitle className="text-sm font-medium">Credits</CardTitle>
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-3">
                     <div className="text-2xl font-bold" data-testid="text-credits-balance">
                       {stats?.creditsBalance ?? 0}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      <Link href="/pricing">
-                        <a className="hover:underline text-primary">Buy more</a>
-                      </Link>
-                    </p>
+                    <Button 
+                      variant="outline" 
+                      className="w-full" 
+                      onClick={() => setFeatureJobId('buy-credits')}
+                    >
+                      Buy More
+                    </Button>
                   </CardContent>
                 </Card>
               </>
@@ -550,42 +596,100 @@ export default function Dashboard() {
                                 ? "destructive"
                                 : "secondary"
                             }
+                            className={
+                              job.status === "active"
+                                ? "bg-green-600 hover:bg-green-700 text-white"
+                                : ""
+                            }
                           >
                             {job.status}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{job.tier}</Badge>
+                          <Badge 
+                            variant="outline"
+                            className={
+                              job.tier === 'featured'
+                                ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+                                : ""
+                            }
+                          >
+                            {job.tier === 'featured' ? 'Featured' : 'Free'}
+                          </Badge>
                         </TableCell>
                         <TableCell>{job.viewCount ?? 0}</TableCell>
                         <TableCell>{job.applicationCount ?? job.applyCount ?? 0}</TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
-                            <Link href={`/jobs/${job.id}`}>
-                              <Button variant="ghost" size="sm">
-                                View
-                              </Button>
-                            </Link>
-                            {/* Keep editing from the dashboard */}
-                            <Link href={`/jobs/${job.id}/edit`}>
-                              <Button variant="outline" size="sm">
-                                Edit
-                              </Button>
-                            </Link>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => deleteJobMutation.mutate(job.id)}
-                              disabled={
-                                deleteJobMutation.isPending && jobBeingDeleted === job.id
-                              }
-                            >
-                              {deleteJobMutation.isPending &&
-                              jobBeingDeleted === job.id
-                                ? "Deleting..."
-                                : "Delete"}
-                            </Button>
-                          </div>
+                          <TooltipProvider>
+                            <div className="flex gap-2">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Link href={`/jobs/${job.id}`}>
+                                    <Button variant="ghost" size="icon">
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                  </Link>
+                                </TooltipTrigger>
+                                <TooltipContent>View Job</TooltipContent>
+                              </Tooltip>
+
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Link href={`/jobs/${job.id}/edit`}>
+                                    <Button variant="outline" size="icon">
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                  </Link>
+                                </TooltipTrigger>
+                                <TooltipContent>Edit Job</TooltipContent>
+                              </Tooltip>
+
+                              {job.tier !== 'featured' && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button 
+                                      variant="default" 
+                                      size="icon"
+                                      onClick={() => {
+                                        const creditsBalance = stats?.creditsBalance ?? 0;
+                                        
+                                        if (creditsBalance > 0) {
+                                          // Show confirmation dialog
+                                          setConfirmFeatureJobId(job.id);
+                                        } else {
+                                          // Show payment dialog
+                                          setFeatureJobId(job.id);
+                                        }
+                                      }}
+                                    >
+                                      <Star className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Feature Job</TooltipContent>
+                                </Tooltip>
+                              )}
+
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="destructive"
+                                    size="icon"
+                                    onClick={() => deleteJobMutation.mutate(job.id)}
+                                    disabled={
+                                      deleteJobMutation.isPending && jobBeingDeleted === job.id
+                                    }
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {deleteJobMutation.isPending && jobBeingDeleted === job.id
+                                    ? "Deleting..."
+                                    : "Delete Job"}
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                          </TooltipProvider>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -598,6 +702,50 @@ export default function Dashboard() {
       </main>
 
       <Footer />
+      
+      <FeatureJobDialog 
+        open={!!featureJobId} 
+        onOpenChange={(open) => !open && setFeatureJobId(null)}
+        jobId={featureJobId || ""}
+      />
+
+      <AlertDialog open={!!confirmFeatureJobId} onOpenChange={(open) => !open && setConfirmFeatureJobId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Feature this job?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will use 1 credit from your balance to feature this job for 30 days. 
+              The job will appear at the top of search results and on the homepage.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                try {
+                  await apiRequest("POST", `/api/jobs/${confirmFeatureJobId}/upgrade-featured`);
+                  toast({
+                    title: "✅ Job Featured!",
+                    description: "1 credit has been deducted from your balance.",
+                    className: "bg-green-600 text-white",
+                  });
+                  queryClient.invalidateQueries({ queryKey: ["/api/employer/jobs"] });
+                  queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+                  setConfirmFeatureJobId(null);
+                } catch (error: any) {
+                  toast({
+                    title: "Error",
+                    description: error.message || "Failed to feature job",
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

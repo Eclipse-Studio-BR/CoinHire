@@ -283,88 +283,13 @@ async function seed() {
 
   // Create pricing plans
   const pricingPlans = [
-    // Normal tier
     {
       id: randomUUID(),
-      name: "Normal - 7 Days",
+      name: "Job Posting - 30 Days",
       tier: "normal" as const,
-      price: 9900, // $99
-      visibilityDays: 7,
+      price: 15, // $0.15 (for testing Stripe)
+      visibilityDays: 30,
       credits: 1,
-      isActive: true,
-    },
-    {
-      id: randomUUID(),
-      name: "Normal - 14 Days",
-      tier: "normal" as const,
-      price: 17900, // $179
-      visibilityDays: 14,
-      credits: 2,
-      isActive: true,
-    },
-    {
-      id: randomUUID(),
-      name: "Normal - 30 Days",
-      tier: "normal" as const,
-      price: 29900, // $299
-      visibilityDays: 30,
-      credits: 3,
-      isActive: true,
-    },
-    // Featured tier
-    {
-      id: randomUUID(),
-      name: "Featured - 7 Days",
-      tier: "featured" as const,
-      price: 19900, // $199
-      visibilityDays: 7,
-      credits: 2,
-      isActive: true,
-    },
-    {
-      id: randomUUID(),
-      name: "Featured - 14 Days",
-      tier: "featured" as const,
-      price: 34900, // $349
-      visibilityDays: 14,
-      credits: 4,
-      isActive: true,
-    },
-    {
-      id: randomUUID(),
-      name: "Featured - 30 Days",
-      tier: "featured" as const,
-      price: 59900, // $599
-      visibilityDays: 30,
-      credits: 6,
-      isActive: true,
-    },
-    // Premium tier
-    {
-      id: randomUUID(),
-      name: "Premium - 7 Days",
-      tier: "premium" as const,
-      price: 39900, // $399
-      visibilityDays: 7,
-      credits: 4,
-      isActive: true,
-    },
-    {
-      id: randomUUID(),
-      name: "Premium - 14 Days",
-      tier: "premium" as const,
-      price: 69900, // $699
-      visibilityDays: 14,
-      credits: 7,
-      isActive: true,
-    },
-    {
-      id: randomUUID(),
-      name: "Premium - 30 Days",
-      tier: "premium" as const,
-      price: 99900, // $999
-      visibilityDays: 30,
-      credits: 10,
       isActive: true,
     },
   ];

@@ -49,7 +49,7 @@ export default function PostJob() {
     salaryMax: '',
     jobType: 'full_time',
     experienceLevel: 'mid',
-    tier: 'normal',
+    tier: 'featured',
     externalUrl: '',
     tags: '',
     visibilityDays: 30,
@@ -270,10 +270,10 @@ export default function PostJob() {
         <div className="container mx-auto px-4 py-8 max-w-4xl">
           <div className="mb-8">
             <h1 className="text-3xl md:text-4xl font-bold mb-2" data-testid="text-page-title">
-              {isEdit ? "Edit Job" : "Post a Job"}
+              {isEdit ? "Edit Job" : "Post a Job Listing"}
             </h1>
             <p className="text-muted-foreground">
-              {isEdit ? "Update your job listing details" : "Fill out the form below to post your job opportunity"}
+              {isEdit ? "Update your job listing details" : "Fill in the details below to post your job"}
             </p>
           </div>
 
