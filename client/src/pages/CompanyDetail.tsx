@@ -7,9 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, ExternalLink, Users, Briefcase } from "lucide-react";
+import { MapPin, ExternalLink, Users, Briefcase, Bitcoin, Home, MessageCircle } from "lucide-react";
+import { FaDiscord, FaTelegram, FaTwitter } from "react-icons/fa";
 import type { Company, Job } from "@shared/schema";
 
 type CompanyWithJobs = Company & { jobs?: Job[] };
@@ -102,14 +101,37 @@ export default function CompanyDetail() {
                   </div>
                 </div>
 
-                {company.website && (
-                  <Button asChild variant="outline" data-testid="button-website">
-                    <a href={company.website} target="_blank" rel="noopener noreferrer" className="gap-2">
-                      Visit Website
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  </Button>
-                )}
+                <div className="flex flex-wrap gap-3">
+                  {company.website && (
+                    <Button asChild variant="outline" data-testid="button-website">
+                      <a href={company.website} target="_blank" rel="noopener noreferrer" className="gap-2">
+                        Visit Website
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    </Button>
+                  )}
+                  {company.twitter && (
+                    <Button asChild variant="outline" size="icon" data-testid="button-twitter">
+                      <a href={company.twitter} target="_blank" rel="noopener noreferrer" title="Twitter">
+                        <FaTwitter className="w-4 h-4" />
+                      </a>
+                    </Button>
+                  )}
+                  {company.discord && (
+                    <Button asChild variant="outline" size="icon" data-testid="button-discord">
+                      <a href={company.discord} target="_blank" rel="noopener noreferrer" title="Discord">
+                        <FaDiscord className="w-4 h-4" />
+                      </a>
+                    </Button>
+                  )}
+                  {company.telegram && (
+                    <Button asChild variant="outline" size="icon" data-testid="button-telegram">
+                      <a href={company.telegram} target="_blank" rel="noopener noreferrer" title="Telegram">
+                        <FaTelegram className="w-4 h-4" />
+                      </a>
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -117,15 +139,9 @@ export default function CompanyDetail() {
 
         {/* Company Content */}
         <div className="container mx-auto px-4 py-8">
-          <Tabs defaultValue="about" className="w-full">
-            <TabsList className="mb-6">
-              <TabsTrigger value="about" data-testid="tab-about">About</TabsTrigger>
-              <TabsTrigger value="jobs" data-testid="tab-jobs">
-                Open Positions ({activeJobs.length})
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="about" className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Left Column - About & Company Info */}
+            <div className="lg:col-span-1 space-y-6">
               <Card>
                 <CardHeader>
                   <h2 className="text-2xl font-semibold">About {company.name}</h2>
@@ -136,26 +152,64 @@ export default function CompanyDetail() {
                   </p>
                 </CardContent>
               </Card>
-            </TabsContent>
 
-            <TabsContent value="jobs" className="space-y-4">
-              {activeJobs.length > 0 ? (
-                activeJobs.map((job) => (
-                  <JobCard key={job.id} job={{ ...job, company }} />
-                ))
-              ) : (
-                <Card className="p-12 text-center">
-                  <div className="max-w-md mx-auto space-y-4">
-                    <div className="text-6xl">💼</div>
-                    <h3 className="text-xl font-semibold">No open positions</h3>
-                    <p className="text-muted-foreground">
-                      {company.name} doesn't have any open positions at the moment. Check back later!
-                    </p>
+              {/* Company Info Card */}
+              <Card>
+                <CardHeader>
+                  <h3 className="text-xl font-semibold">Company Info</h3>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {company.currentSize && (
+                    <div className="flex items-start gap-3">
+                      <Users className="w-5 h-5 text-primary mt-0.5" />
+                      <div>
+                        <p className="font-medium text-sm">Current Size</p>
+                        <p className="text-muted-foreground">{company.currentSize}</p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-start gap-3">
+                    <Bitcoin className="w-5 h-5 text-primary mt-0.5" />
+                    <div>
+                      <p className="font-medium text-sm">Payment in Crypto</p>
+                      <p className="text-muted-foreground">{company.paymentInCrypto ? 'Yes' : 'No'}</p>
+                    </div>
                   </div>
-                </Card>
-              )}
-            </TabsContent>
-          </Tabs>
+                  <div className="flex items-start gap-3">
+                    <Home className="w-5 h-5 text-primary mt-0.5" />
+                    <div>
+                      <p className="font-medium text-sm">Remote Working</p>
+                      <p className="text-muted-foreground">{company.remoteWorking ? 'Yes' : 'No'}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right Column - Jobs */}
+            <div className="lg:col-span-2 space-y-6">
+              <div>
+                <h2 className="text-2xl font-semibold mb-4">Open Positions ({activeJobs.length})</h2>
+                {activeJobs.length > 0 ? (
+                  <div className="space-y-4">
+                    {activeJobs.map((job) => (
+                      <JobCard key={job.id} job={{ ...job, company }} />
+                    ))}
+                  </div>
+                ) : (
+                  <Card className="p-12 text-center">
+                    <div className="max-w-md mx-auto space-y-4">
+                      <div className="text-6xl">💼</div>
+                      <h3 className="text-xl font-semibold">No open positions</h3>
+                      <p className="text-muted-foreground">
+                        {company.name} doesn't have any open positions at the moment. Check back later!
+                      </p>
+                    </div>
+                  </Card>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </main>
 
