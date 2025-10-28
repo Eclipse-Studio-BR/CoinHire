@@ -237,6 +237,7 @@ const updateProfileSchema = z
     firstName: z.string().trim().max(100, "First name must be 100 characters or less").optional(),
     lastName: z.string().trim().max(100, "Last name must be 100 characters or less").optional(),
     profileImageUrl: z.string().trim().max(500, "Profile image path is too long").optional(),
+    resumePath: z.string().trim().max(500, "Resume path is too long").optional(),
   })
   .refine((data) => Object.values(data).some((value) => value !== undefined), {
     message: "At least one field is required to update your profile",
@@ -722,6 +723,11 @@ export function registerAuth(app: Express) {
       if (payload.profileImageUrl !== undefined) {
         const trimmed = payload.profileImageUrl.trim();
         updates.profileImageUrl = trimmed.length ? trimmed : null;
+      }
+
+      if (payload.resumePath !== undefined) {
+        const trimmed = payload.resumePath.trim();
+        updates.resumePath = trimmed.length ? trimmed : null;
       }
 
       const [updatedUser] = await db

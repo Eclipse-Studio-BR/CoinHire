@@ -6,16 +6,17 @@ import { ImagePlus, Loader2, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface PublicFileUploadProps {
-  type: "avatar" | "logo";
+  type: "avatar" | "logo" | "resume";
   label?: string;
   value?: string;
   onChange: (value: string | undefined) => void;
   helperText?: string;
 }
 
-const ENDPOINT_MAP: Record<"avatar" | "logo", string> = {
+const ENDPOINT_MAP: Record<"avatar" | "logo" | "resume", string> = {
   avatar: "/api/uploads/public/avatar",
   logo: "/api/uploads/public/logo",
+  resume: "/api/uploads/resume",
 };
 
 export function PublicFileUpload({ type, label, value, onChange, helperText }: PublicFileUploadProps) {
@@ -76,7 +77,13 @@ export function PublicFileUpload({ type, label, value, onChange, helperText }: P
   return (
     <div className="space-y-2">
       {label && <Label>{label}</Label>}
-      <input ref={inputRef} type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+      <input 
+        ref={inputRef} 
+        type="file" 
+        className="hidden" 
+        accept={type === "resume" ? ".pdf,.doc,.docx" : "image/*"} 
+        onChange={handleFileChange} 
+      />
       <Card className="p-4 flex items-center gap-4">
         {preview ? (
           <img src={preview} alt="Uploaded preview" className="h-16 w-16 rounded-lg object-cover border" />

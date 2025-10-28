@@ -23,6 +23,7 @@ const profileFormSchema = z.object({
   firstName: z.string().max(100, "First name must be 100 characters or less").optional(),
   lastName: z.string().max(100, "Last name must be 100 characters or less").optional(),
   profileImageUrl: z.string().max(500, "Profile image URL is too long").optional(),
+  resumePath: z.string().max(500, "Resume URL is too long").optional(),
   // shown only for employers but safe to include in schema
   companyDescription: z.string().max(2000, "Description is too long").optional(),
   currentSize: z.string().optional(),
@@ -149,6 +150,7 @@ export default function Settings() {
         firstName: values.firstName ?? "",
         lastName: values.lastName ?? "",
         profileImageUrl: values.profileImageUrl ?? "",
+        resumePath: values.resumePath ?? "",
       });
       return (await response.json()) as PublicUser;
     },
@@ -157,6 +159,7 @@ export default function Settings() {
       profileForm.reset({
         ...buildProfileDefaults(updatedUser),
         companyDescription: profileForm.getValues("companyDescription") ?? "",
+        currentSize: profileForm.getValues("currentSize") ?? "",
       });
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
     },
@@ -252,16 +255,17 @@ export default function Settings() {
   const savingProfile = profileMutation.isPending || companyMutation.isPending;
   const canSubmitProfile = profileForm.formState.isDirty && !savingProfile && (!isEmployer || !companiesLoading);
 
-  const handleProfileSubmit = (values: ProfileFormValues) => {
+  const handleProfileSubmit = async (values: ProfileFormValues) => {
     // update user profile
-    profileMutation.mutate({
+    await profileMutation.mutateAsync({
       firstName: values.firstName ?? "",
       lastName: values.lastName ?? "",
       profileImageUrl: values.profileImageUrl ?? "",
+      resumePath: values.resumePath ?? "",
     });
     // also update company description/logo if employer
     if (isEmployer && myCompany) {
-      companyMutation.mutate({
+      await companyMutation.mutateAsync({
         id: String(myCompany.id),
         description: values.companyDescription ?? "",
         logo: values.profileImageUrl || null,
@@ -309,29 +313,52 @@ export default function Settings() {
               <CardContent>
                 <Form {...profileForm}>
                   <form className="space-y-6" onSubmit={profileForm.handleSubmit(handleProfileSubmit)}>
-                    <div className="grid gap-6 md:grid-cols-[260px,1fr]">
-                      <FormField
-                        control={profileForm.control}
-                        name="profileImageUrl"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Profile photo</FormLabel>
-                            <FormControl>
-                              <div className="max-w-xs">
-                                <FileUpload
-                                  type="avatar"
-                                  currentFile={field.value || undefined}
-                                  onUploadComplete={(url) => field.onChange(url)}
-                                />
-                              </div>
-                            </FormControl>
-                            <FormDescription>Square images (400x400px+) look best.</FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                    {isTalent ? (
+                      <>
+                        <div className="grid gap-6 md:grid-cols-2">
+                          <FormField
+                            control={profileForm.control}
+                            name="profileImageUrl"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Profile photo</FormLabel>
+                                <FormControl>
+                                  <div className="max-w-xs">
+                                    <FileUpload
+                                      type="avatar"
+                                      currentFile={field.value || undefined}
+                                      onUploadComplete={(url) => field.onChange(url)}
+                                    />
+                                  </div>
+                                </FormControl>
+                                <FormDescription>Square images (400x400px+) look best.</FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
 
-                      <div className="grid gap-6">
+                          <FormField
+                            control={profileForm.control}
+                            name="resumePath"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Resume</FormLabel>
+                                <FormControl>
+                                  <div className="max-w-xs">
+                                    <FileUpload
+                                      type="resume"
+                                      currentFile={field.value || undefined}
+                                      onUploadComplete={(url) => field.onChange(url)}
+                                    />
+                                  </div>
+                                </FormControl>
+                                <FormDescription>PDF format works best.</FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
                         <div className="grid gap-4 sm:grid-cols-2">
                           <FormField
                             control={profileForm.control}
@@ -371,8 +398,73 @@ export default function Settings() {
                             <p>Add a name to personalize your account.</p>
                           )}
                         </div>
+                      </>
+                    ) : (
+                      <div className="grid gap-6 md:grid-cols-[260px,1fr]">
+                        <FormField
+                          control={profileForm.control}
+                          name="profileImageUrl"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Profile photo</FormLabel>
+                              <FormControl>
+                                <div className="max-w-xs">
+                                  <FileUpload
+                                    type="avatar"
+                                    currentFile={field.value || undefined}
+                                    onUploadComplete={(url) => field.onChange(url)}
+                                  />
+                                </div>
+                              </FormControl>
+                              <FormDescription>Square images (400x400px+) look best.</FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="grid gap-6">
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <FormField
+                              control={profileForm.control}
+                              name="firstName"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>First name</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="Satoshi" {...field} value={field.value ?? ""} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={profileForm.control}
+                              name="lastName"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Last name</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="Nakamoto" {...field} value={field.value ?? ""} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
+                            {user?.email ? (
+                              <>
+                                <p className="text-foreground font-medium">Primary email</p>
+                                <p>{user.email}</p>
+                              </>
+                            ) : (
+                              <p>Add a name to personalize your account.</p>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Employer-only: company description in the SAME block */}
                     {isEmployer && (
@@ -810,6 +902,7 @@ function buildProfileDefaults(user: PublicUser | null): ProfileFormValues {
     firstName: user?.firstName ?? "",
     lastName: user?.lastName ?? "",
     profileImageUrl: user?.profileImageUrl ?? "",
+    resumePath: user?.resumePath ?? "",
     companyDescription: "",
   };
 }
