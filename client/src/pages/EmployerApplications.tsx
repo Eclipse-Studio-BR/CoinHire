@@ -421,6 +421,9 @@ export default function EmployerApplications() {
                                       <DialogHeader>
                                         <DialogTitle>Send Interview Request to {applicantName}</DialogTitle>
                                       </DialogHeader>
+                                      <p className="text-sm text-muted-foreground mb-4">
+                                        Send a message to the applicant and schedule an interview, all the messages sent to applicants can be accessed anytime in Messages page in the platform.
+                                      </p>
                                       <div className="space-y-4">
                                         <Textarea 
                                           placeholder="Hi, we'd like to schedule an interview with you. Are you available this week?"

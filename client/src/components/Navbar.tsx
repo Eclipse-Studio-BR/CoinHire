@@ -122,13 +122,12 @@ export function Navbar() {
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-8">
             <Link href="/">
-              <div
-                className="flex items-center gap-2 cursor-pointer"
+              <img 
+                src="/images/logos/coinhire.png" 
+                alt="CoinHire" 
+                className="h-8 cursor-pointer"
                 data-testid="link-home"
-              >
-                <Briefcase className="w-6 h-6 text-primary" />
-                <span className="font-bold text-xl">Web3 Jobs</span>
-              </div>
+              />
             </Link>
 
             <nav className="hidden md:flex items-center gap-6">

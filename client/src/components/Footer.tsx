@@ -1,17 +1,23 @@
 import { Link } from "wouter";
-import { Briefcase } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export function Footer() {
+  const { user, isAuthenticated } = useAuth();
+  const postJobLink = isAuthenticated && (user?.role === "employer" || user?.role === "recruiter") 
+    ? "/post-job" 
+    : "/register";
+  
   return (
     <footer className="border-t bg-card mt-auto">
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-4">
             <Link href="/">
-              <div className="flex items-center gap-2 cursor-pointer">
-                <Briefcase className="w-6 h-6 text-primary" />
-                <span className="font-bold text-lg">Web3 Jobs</span>
-              </div>
+              <img 
+                src="/images/logos/coinhire.png" 
+                alt="CoinHire" 
+                className="h-8 cursor-pointer mb-4"
+              />
             </Link>
             <p className="text-sm text-muted-foreground">
               The leading job board for Web3 and blockchain careers.
@@ -43,7 +49,7 @@ export function Footer() {
             <h3 className="font-semibold mb-4">For Employers</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <Link href="/post-job" className="hover:text-foreground transition-colors">
+                <Link href={postJobLink} className="hover:text-foreground transition-colors">
                   Post a Job
                 </Link>
               </li>
@@ -77,7 +83,7 @@ export function Footer() {
         </div>
 
         <div className="mt-12 pt-8 border-t text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} Web3 Jobs. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} CoinHire. All rights reserved.</p>
         </div>
       </div>
     </footer>
