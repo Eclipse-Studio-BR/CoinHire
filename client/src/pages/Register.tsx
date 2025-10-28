@@ -36,8 +36,9 @@ const talentFormSchema = z
     firstName: z.string().optional().or(z.literal("")),
     lastName: z.string().optional().or(z.literal("")),
     avatarPath: z.string().optional().or(z.literal("")),
+    resumePath: z.string().optional().or(z.literal("")),
     title: z.string().min(2, "Title is required"),
-    story: z.string().min(20, "Tell us more about you"),
+    story: z.string().min(20, "Tell us more about your professional experience"),
     hourlyRate: z.string().optional().or(z.literal("")),
     monthlyRate: z.string().optional().or(z.literal("")),
     location: z.string().min(2, "Location is required"),
@@ -203,6 +204,7 @@ function TalentRegisterForm({ onBack }: { onBack: () => void }) {
       firstName: "",
       lastName: "",
       avatarPath: "",
+      resumePath: "",
       title: "",
       story: "",
       hourlyRate: "",
@@ -275,7 +277,7 @@ function TalentRegisterForm({ onBack }: { onBack: () => void }) {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Personal email</FormLabel>
+                    <FormLabel>E-mail</FormLabel>
                     <FormControl>
                       <Input type="email" placeholder="you@example.com" {...field} />
                     </FormControl>
@@ -346,6 +348,30 @@ function TalentRegisterForm({ onBack }: { onBack: () => void }) {
               )}
             />
 
+            <FormField
+              control={talentForm.control}
+              name="resumePath"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Upload your resume</FormLabel>
+                  <FormControl>
+                    <PublicFileUpload
+                      type="resume"
+                      value={field.value || undefined}
+                      onChange={(val) => field.onChange(val ?? "")}
+                      helperText="PDF format works best."
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Personal Details Section */}
+            <div className="border-t pt-6">
+              <h3 className="text-lg font-semibold text-primary mb-4">Personal Details</h3>
+            </div>
+
             <div className="grid gap-6 md:grid-cols-2">
               <FormField
                 control={talentForm.control}
@@ -394,9 +420,9 @@ function TalentRegisterForm({ onBack }: { onBack: () => void }) {
               name="story"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>What's your story?</FormLabel>
+                  <FormLabel>Professional Experience</FormLabel>
                   <FormControl>
-                    <Textarea rows={5} placeholder="Share what makes you great" {...field} />
+                    <Textarea rows={5} placeholder="Share your professional experience" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -499,6 +525,11 @@ function TalentRegisterForm({ onBack }: { onBack: () => void }) {
                 </FormItem>
               )}
             />
+
+            {/* Socials Section */}
+            <div className="border-t pt-6">
+              <h3 className="text-lg font-semibold text-primary mb-4">Socials</h3>
+            </div>
 
             <div className="grid gap-6 md:grid-cols-2">
               <FormField

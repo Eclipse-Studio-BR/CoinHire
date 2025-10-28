@@ -114,11 +114,18 @@ export default function Profile() {
                       </div>
                     </div>
 
-                    <div className="pt-2">
-                      <p className="text-sm text-muted-foreground">
-                        Your profile information is managed through your authentication provider.
-                      </p>
-                    </div>
+                    {user.role === "talent" && user.resumePath && (
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Resume</label>
+                        <div className="mt-1">
+                          <Button variant="outline" size="sm" asChild>
+                            <a href={user.resumePath} target="_blank" rel="noopener noreferrer">
+                              View Resume
+                            </a>
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
