@@ -22,13 +22,19 @@ import {
   FileText,
   Bookmark,
   Plus,
+  MessageSquare,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import type { Application, Job, Company, SavedJob } from "@shared/schema";
 import { formatTimeAgo } from "@/lib/utils";
 import { APPLICATION_STATUSES } from "@/lib/constants";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { Message } from "@shared/schema";
 
 // --------- Local helper types ----------
 type ApplicationWithJob = Application & { job?: Job & { company?: Company } };
@@ -54,6 +60,8 @@ export default function Dashboard() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [jobBeingDeleted, setJobBeingDeleted] = useState<string | null>(null);
+  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -70,6 +78,10 @@ export default function Dashboard() {
   const { data: stats } = useQuery<DashboardStats | null>({
     queryKey: ["/api/dashboard/stats"],
     enabled: isAuthenticated,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnReconnect: "always",
+    refetchOnWindowFocus: "always",
   });
 
   const { data: applications = [] } = useQuery<ApplicationWithJob[]>({
@@ -91,7 +103,46 @@ export default function Dashboard() {
     refetchOnWindowFocus: "always",
   });
 
+  const { data: messagesList = [], refetch: refetchMessages } = useQuery<Message[]>({
+    queryKey: ["/api/applications/messages", selectedApplicationId],
+    queryFn: async () => {
+      if (!selectedApplicationId) return [];
+      console.log("Fetching messages for application:", selectedApplicationId);
+      const response = await fetch(`/api/applications/${selectedApplicationId}/messages`, {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch messages: ${response.statusText}`);
+      }
+      const messages = await response.json();
+      console.log("Messages received:", messages, "Count:", messages.length);
+      return messages as Message[];
+    },
+    enabled: !!selectedApplicationId,
+    refetchInterval: 3000, // Refetch every 3 seconds when dialog is open
+  });
+
   // ---------- Mutations ----------
+  const sendReplyMutation = useMutation({
+    mutationFn: async ({ applicationId, message }: { applicationId: string; message: string }) => {
+      await apiRequest("POST", `/api/applications/${applicationId}/messages`, { message });
+    },
+    onSuccess: () => {
+      setReplyText("");
+      queryClient.invalidateQueries({ queryKey: ["/api/applications/messages", selectedApplicationId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
+    },
+  });
+
+  const markAsReadMutation = useMutation({
+    mutationFn: async (applicationId: string) => {
+      await apiRequest("PUT", `/api/applications/${applicationId}/messages/read`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/applications/messages"] });
+    },
+  });
+
   const deleteJobMutation = useMutation({
     mutationFn: async (jobId: string) => {
       await apiRequest("DELETE", `/api/jobs/${jobId}`);
@@ -320,6 +371,7 @@ export default function Dashboard() {
                       <TableHead>Company</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Applied</TableHead>
+                      <TableHead>Messages</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -357,13 +409,101 @@ export default function Dashboard() {
                           {formatTimeAgo(application.createdAt)}
                         </TableCell>
                         <TableCell>
+                          <Dialog 
+                            open={selectedApplicationId === application.id} 
+                            onOpenChange={(open) => {
+                              if (open) {
+                                setSelectedApplicationId(application.id);
+                                markAsReadMutation.mutate(application.id);
+                              } else {
+                                setSelectedApplicationId(null);
+                              }
+                            }}
+                          >
+                            <DialogTrigger asChild>
+                              <Button size="sm" variant="outline">
+                                <MessageSquare className="h-4 w-4 mr-2" />
+                                View
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
+                              <DialogHeader>
+                                <DialogTitle>Messages - {application.job?.title}</DialogTitle>
+                              </DialogHeader>
+                              <ScrollArea className="h-96 pr-4">
+                                {messagesList && messagesList.length > 0 ? (
+                                  <div className="space-y-6">
+                                    {messagesList.map((msg) => {
+                                      const isTalent = msg.senderId === user?.id;
+                                      const senderName = isTalent ? "You" : (application.job?.company?.name || "Company");
+                                      const senderInitials = isTalent 
+                                        ? (user?.firstName?.[0] || user?.email?.[0] || "Y")
+                                        : (application.job?.company?.name?.[0] || "C");
+                                      const senderAvatar = isTalent ? user?.profileImageUrl : application.job?.company?.logo;
+                                      
+                                      return (
+                                        <div 
+                                          key={msg.id} 
+                                          className="flex gap-3 items-start"
+                                        >
+                                          <Avatar className="h-8 w-8 flex-shrink-0">
+                                            <AvatarImage src={senderAvatar || undefined} />
+                                            <AvatarFallback>{senderInitials}</AvatarFallback>
+                                          </Avatar>
+                                          <div className="flex-1 space-y-1">
+                                            <div className="flex items-center gap-2">
+                                              <span className="font-semibold text-sm">{senderName}</span>
+                                              <span className="text-xs text-muted-foreground">
+                                                {new Date(msg.createdAt).toLocaleDateString()} {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                              </span>
+                                            </div>
+                                            <div className="rounded-lg p-3 bg-muted max-w-[80%]">
+                                              <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <p className="text-center text-muted-foreground py-8">No messages from the company yet. They will contact you if they're interested.</p>
+                                )}
+                              </ScrollArea>
+                              {messagesList && messagesList.length > 0 && messagesList.some(msg => msg.senderId !== user?.id) ? (
+                                <div className="flex gap-2 mt-4">
+                                  <Textarea 
+                                    value={replyText}
+                                    onChange={(e) => setReplyText(e.target.value)}
+                                    placeholder="Type your reply..."
+                                    rows={3}
+                                    className="flex-1"
+                                  />
+                                  <Button 
+                                    onClick={() => sendReplyMutation.mutate({ 
+                                      applicationId: application.id, 
+                                      message: replyText 
+                                    })}
+                                    disabled={!replyText.trim() || sendReplyMutation.isPending}
+                                  >
+                                    {sendReplyMutation.isPending ? "Sending..." : "Send"}
+                                  </Button>
+                                </div>
+                              ) : messagesList && messagesList.length === 0 ? null : (
+                                <div className="mt-4 text-center text-sm text-muted-foreground">
+                                  Waiting for the company to start the conversation...
+                                </div>
+                              )}
+                            </DialogContent>
+                          </Dialog>
+                        </TableCell>
+                        <TableCell>
                           <Link href={`/jobs/${application.jobId}`}>
                             <Button
                               variant="ghost"
                               size="sm"
                               data-testid={`button-view-${application.id}`}
                             >
-                              View
+                              View Job
                             </Button>
                           </Link>
                         </TableCell>

@@ -15,18 +15,72 @@ import {
   LogOut,
   Settings,
   LayoutDashboard,
+  MessageSquare,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { getInitials } from "@/lib/utils";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Company } from "@shared/schema";
+import type { Company, Application } from "@shared/schema";
 
 export function Navbar() {
   const { user, isAuthenticated } = useAuth();
   const [location] = useLocation();
   const { toast } = useToast();
+
+  // Fetch applications
+  const { data: talentApplications = [] } = useQuery<Application[]>({
+    queryKey: ["/api/applications"],
+    enabled: isAuthenticated && user?.role === "talent",
+    refetchInterval: 5000, // Auto-refresh every 5 seconds
+  });
+
+  const { data: employerData = [] } = useQuery<Array<{ applications: Application[] }>>({
+    queryKey: ["/api/employer/applications"],
+    enabled: isAuthenticated && (user?.role === "employer" || user?.role === "recruiter"),
+    refetchInterval: 5000, // Auto-refresh every 5 seconds
+  });
+
+  const employerApplications = employerData.flatMap(item => item.applications || []);
+  const applications = user?.role === "talent" ? talentApplications : employerApplications;
+
+  // Fetch all messages to calculate unread counts
+  const { data: allMessagesData = [] } = useQuery<Array<{ applicationId: string; messages: Array<{ senderId: string; isRead: boolean }> }>>({
+    queryKey: ["/api/navbar-messages"],
+    queryFn: async () => {
+      if (!user || applications.length === 0) return [];
+      const interviewApps = applications.filter(app => app.status === 'interview');
+      const results = await Promise.all(
+        interviewApps.map(async (app) => {
+          try {
+            const response = await fetch(`/api/applications/${app.id}/messages`, {
+              credentials: 'include'
+            });
+            if (!response.ok) return { applicationId: app.id, messages: [] };
+            const messages = await response.json();
+            return { applicationId: app.id, messages };
+          } catch {
+            return { applicationId: app.id, messages: [] };
+          }
+        })
+      );
+      return results;
+    },
+    enabled: isAuthenticated && (user?.role === "talent" || user?.role === "employer") && applications.length > 0,
+    refetchInterval: 5000, // Auto-refresh every 5 seconds
+  });
+
+  // Calculate total unread count
+  const totalUnread = applications
+    .filter(app => app.status === 'interview')
+    .reduce((sum, app) => {
+      const appMessages = allMessagesData.find(d => d.applicationId === app.id)?.messages || [];
+      const unreadCount = appMessages.filter(msg => 
+        msg.senderId !== user?.id && !msg.isRead
+      ).length;
+      return sum + unreadCount;
+    }, 0);
 
   const { data: employerCompanies = [] } = useQuery<
     (Company & { jobCount?: number })[]
@@ -182,29 +236,69 @@ export function Navbar() {
                   </DropdownMenuItem>
 
                   {user?.role === "talent" && (
-                    <DropdownMenuItem asChild>
-                      <Link
-                        href="/profile"
-                        className="flex items-center w-full"
-                        data-testid="link-profile"
-                      >
-                        <User className="mr-2 h-4 w-4" />
-                        <span>Profile</span>
-                      </Link>
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href="/messages"
+                          className="flex items-center w-full justify-between"
+                          data-testid="link-messages"
+                        >
+                          <div className="flex items-center">
+                            <MessageSquare className="mr-2 h-4 w-4" />
+                            <span>Messages</span>
+                          </div>
+                          {totalUnread > 0 && (
+                            <div className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold">
+                              {totalUnread}
+                            </div>
+                          )}
+                        </Link>
+                      </DropdownMenuItem>
+                      
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href="/profile"
+                          className="flex items-center w-full"
+                          data-testid="link-profile"
+                        >
+                          <User className="mr-2 h-4 w-4" />
+                          <span>Profile</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
                   )}
 
                   {user?.role === "employer" && (
-                    <DropdownMenuItem asChild>
-                      <Link
-                        href={companyLink}
-                        className="flex items-center w-full"
-                        data-testid="link-company"
-                      >
-                        <Building2 className="mr-2 h-4 w-4" />
-                        <span>My Company</span>
-                      </Link>
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href="/messages"
+                          className="flex items-center w-full justify-between"
+                          data-testid="link-messages"
+                        >
+                          <div className="flex items-center">
+                            <MessageSquare className="mr-2 h-4 w-4" />
+                            <span>Messages</span>
+                          </div>
+                          {totalUnread > 0 && (
+                            <div className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold">
+                              {totalUnread}
+                            </div>
+                          )}
+                        </Link>
+                      </DropdownMenuItem>
+                      
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href={companyLink}
+                          className="flex items-center w-full"
+                          data-testid="link-company"
+                        >
+                          <Building2 className="mr-2 h-4 w-4" />
+                          <span>My Company</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
                   )}
 
                   <DropdownMenuItem asChild>

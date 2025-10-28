@@ -22,6 +22,7 @@ import RoleSelection from "@/pages/RoleSelection";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import EmployerApplications from "@/pages/EmployerApplications";
+import Messages from "@/pages/Messages";
 
 function Router() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -58,6 +59,7 @@ function Router() {
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/profile" component={Profile} />
       <Route path="/settings" component={Settings} />
+      <Route path="/messages" component={Messages} />
       
       {/* Employer routes */}
       <Route path="/post-job" component={PostJob} />

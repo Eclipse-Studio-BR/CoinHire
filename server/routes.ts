@@ -500,13 +500,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Job not found' });
       }
 
-      // Check if already applied
+      // Check if already applied or has been rejected
       const existingApplications = await storage.listApplications({
         userId: req.session.userId!,
         jobId: req.params.id,
       });
 
       if (existingApplications.length > 0) {
+        const hasRejected = existingApplications.some(app => app.status === 'rejected');
+        if (hasRejected) {
+          return res.status(403).json({ error: 'You cannot reapply to a job where your application was rejected' });
+        }
         return res.status(400).json({ error: 'You have already applied to this job' });
       }
 
@@ -740,7 +744,9 @@ app.delete('/api/companies/:id', requireRole('admin'), async (req, res) => {
         userJobs.map(async (job) => {
           const company = await storage.getCompany(job.companyId);
           const applicationsList = await storage.listApplications({ jobId: job.id });
-          return { ...job, company, applicationsCount: applicationsList.length, applications: applicationsList };
+          // Count only non-rejected applications
+          const activeApplications = applicationsList.filter(app => app.status !== 'rejected');
+          return { ...job, company, applicationsCount: activeApplications.length, applications: applicationsList };
         })
       );
       
@@ -826,7 +832,7 @@ app.delete('/api/companies/:id', requireRole('admin'), async (req, res) => {
     }
   });
 
-  app.delete('/api/applications/:id', requireRole('employer', 'recruiter', 'admin'), async (req: Request, res: Response) => {
+  app.delete('/api/applications/:id', requireAuth, async (req: Request, res: Response) => {
     try {
       const existingApplication = await storage.getApplication(req.params.id);
       if (!existingApplication) {
@@ -838,9 +844,17 @@ app.delete('/api/companies/:id', requireRole('admin'), async (req, res) => {
         return res.status(404).json({ error: 'Job not found' });
       }
 
-      const isMember = await storage.isCompanyMember(req.session.userId!, job.companyId);
       const user = await storage.getUser(req.session.userId!);
-      if (!isMember && user?.role !== 'admin') {
+      const isTalent = existingApplication.userId === req.session.userId;
+      const isMember = await storage.isCompanyMember(req.session.userId!, job.companyId);
+
+      // Talents can only delete their own rejected applications
+      if (isTalent && existingApplication.status !== 'rejected') {
+        return res.status(403).json({ error: 'You can only delete rejected applications' });
+      }
+
+      // Check authorization: talent (own rejected app), employer (company member), or admin
+      if (!isTalent && !isMember && user?.role !== 'admin') {
         return res.status(403).json({ error: 'You do not have permission to delete this application' });
       }
 
@@ -848,6 +862,140 @@ app.delete('/api/companies/:id', requireRole('admin'), async (req, res) => {
       res.status(204).end();
     } catch (error: any) {
       res.status(400).json({ error: error.message });
+    }
+  });
+
+  // ==================== Messages ====================
+
+  // Get messages for application
+  app.get('/api/applications/:id/messages', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const application = await storage.getApplication(req.params.id);
+      if (!application) {
+        return res.status(404).json({ error: 'Application not found' });
+      }
+
+      const job = await storage.getJob(application.jobId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+
+      const isTalent = application.userId === req.session.userId;
+      const isEmployer = await storage.isCompanyMember(req.session.userId!, job.companyId);
+      const user = await storage.getUser(req.session.userId!);
+
+      if (!isTalent && !isEmployer && user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+
+      const messagesList = await storage.listMessages(req.params.id);
+      res.json(messagesList);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Send message
+  app.post('/api/applications/:id/messages', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const application = await storage.getApplication(req.params.id);
+      if (!application) {
+        return res.status(404).json({ error: 'Application not found' });
+      }
+
+      const job = await storage.getJob(application.jobId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+
+      const isTalent = application.userId === req.session.userId;
+      const isEmployer = await storage.isCompanyMember(req.session.userId!, job.companyId);
+      const user = await storage.getUser(req.session.userId!);
+
+      if (!isTalent && !isEmployer && user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+
+      if (!req.body.message || typeof req.body.message !== 'string' || !req.body.message.trim()) {
+        return res.status(400).json({ error: 'Message is required' });
+      }
+
+      const message = await storage.createMessage({
+        applicationId: req.params.id,
+        senderId: req.session.userId!,
+        message: req.body.message.trim(),
+        isRead: false,
+      });
+
+      // If employer sends first message and status is submitted, update to interview
+      if (isEmployer && application.status === 'submitted') {
+        await storage.updateApplication(req.params.id, { status: 'interview' });
+      }
+
+      res.json(message);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Mark messages as read
+  app.put('/api/applications/:id/messages/read', requireAuth, async (req: Request, res: Response) => {
+    try {
+      await storage.markMessagesAsRead(req.params.id, req.session.userId!);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Close chat and reject application (employer only)
+  app.post('/api/applications/:id/close-chat', requireRole('employer', 'recruiter'), async (req: Request, res: Response) => {
+    try {
+      const application = await storage.getApplication(req.params.id);
+      if (!application) {
+        return res.status(404).json({ error: 'Application not found' });
+      }
+
+      const job = await storage.getJob(application.jobId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+
+      const isMember = await storage.isCompanyMember(req.session.userId!, job.companyId);
+      const user = await storage.getUser(req.session.userId!);
+      if (!isMember && user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+
+      // Get applicant and company details for the message
+      const applicant = await storage.getUser(application.userId);
+      const company = await storage.getCompany(job.companyId);
+
+      // Mark application as rejected
+      await storage.updateApplication(req.params.id, { status: 'rejected' });
+
+      // Send automated rejection message
+      const rejectionMessage = `Dear ${applicant?.firstName || 'Applicant'},
+
+Thank you for your interest in ${company?.name || 'our company'} and the time you spent in applying for the ${job.title} position. We regret to inform you that we have closed the search for this role.
+
+We will be advertising more positions in the coming months however and hope you'll keep us in mind and we encourage you to apply again.
+
+We wish you all the best in your job search and future professional endeavors.
+
+Best,
+${company?.name || 'The Team'}`;
+
+      await storage.createMessage({
+        applicationId: req.params.id,
+        senderId: req.session.userId!,
+        message: rejectionMessage,
+        isRead: false,
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 
