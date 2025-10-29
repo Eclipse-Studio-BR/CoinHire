@@ -503,6 +503,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'You do not have permission to delete this job' });
       }
       
+      // Get all active applications (interview status) for this job
+      const applications = await storage.listApplications({ jobId: req.params.id });
+      const activeApplications = applications.filter(app => app.status === 'interview');
+      
+      // Get company info for rejection message
+      const company = await storage.getCompany(job.companyId);
+      
+      // Reject all active applications and send rejection message
+      for (const application of activeApplications) {
+        // Get applicant details
+        const applicant = await storage.getUser(application.userId);
+        
+        // Mark application as rejected
+        await storage.updateApplication(application.id, { status: 'rejected' });
+        
+        // Send automated rejection message
+        const rejectionMessage = `Dear ${applicant?.firstName || 'Applicant'},
+
+Thank you for your interest in ${company?.name || 'our company'} and the time you spent in applying for the ${job.title} position. We regret to inform you that we have closed the search for this role.
+
+We will be advertising more positions in the coming months however and hope you'll keep us in mind and we encourage you to apply again.
+
+We wish you all the best in your job search and future professional endeavors.
+
+Best,
+${company?.name || 'The Team'}`;
+
+        await storage.createMessage({
+          applicationId: application.id,
+          senderId: req.session.userId!,
+          message: rejectionMessage,
+          isRead: false,
+        });
+        
+        console.log(`✅ Auto-rejected application ${application.id} due to job deletion`);
+      }
+      
       // Mark as expired instead of actual delete to preserve data integrity
       await storage.expireJob(req.params.id);
       res.json({ success: true });
@@ -799,6 +836,49 @@ app.delete('/api/companies/:id', requireRole('admin'), async (req, res) => {
           const job = await storage.getJob(application.jobId);
           if (job) {
             const company = await storage.getCompany(job.companyId);
+            
+            // Check if job is expired and application is still in interview status
+            if (application.status === 'interview' && job.status === 'expired') {
+              console.log(`⚠️ Found interview with expired job: ${application.id}`);
+              
+              // Get applicant details for personalized message
+              const applicant = await storage.getUser(application.userId);
+              
+              // Mark application as rejected
+              await storage.updateApplication(application.id, { status: 'rejected' });
+              
+              // Send automated rejection message
+              const rejectionMessage = `Dear ${applicant?.firstName || 'Applicant'},
+
+Thank you for your interest in ${company?.name || 'our company'} and the time you spent in applying for the ${job.title} position. We regret to inform you that we have closed the search for this role.
+
+We will be advertising more positions in the coming months however and hope you'll keep us in mind and we encourage you to apply again.
+
+We wish you all the best in your job search and future professional endeavors.
+
+Best,
+${company?.name || 'The Team'}`;
+
+              // Check if rejection message already sent
+              const existingMessages = await storage.listMessages(application.id);
+              const hasRejectionMessage = existingMessages.some(msg => 
+                msg.message.includes('We regret to inform you that we have closed the search for this role')
+              );
+              
+              if (!hasRejectionMessage) {
+                await storage.createMessage({
+                  applicationId: application.id,
+                  senderId: req.session.userId!, // System message from the user's perspective
+                  message: rejectionMessage,
+                  isRead: false,
+                });
+                console.log(`✅ Auto-rejected application ${application.id} - job expired`);
+              }
+              
+              // Return with updated status
+              return { ...application, status: 'rejected', job: { ...job, company } };
+            }
+            
             return { ...application, job: { ...job, company } };
           }
           return application;

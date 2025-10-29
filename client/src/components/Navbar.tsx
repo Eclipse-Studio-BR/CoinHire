@@ -121,16 +121,26 @@ export function Navbar() {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-8">
-            <Link href="/">
+            <Link href="/" data-testid="link-home-logo">
               <img 
                 src="/images/logos/coinhire.png" 
                 alt="CoinHire" 
                 className="h-8 cursor-pointer"
-                data-testid="link-home"
               />
             </Link>
 
             <nav className="hidden md:flex items-center gap-6">
+              <Link
+                href="/"
+                className={`text-sm font-medium transition-colors hover:text-primary ${
+                  location === "/"
+                    ? "text-foreground"
+                    : "text-muted-foreground"
+                }`}
+                data-testid="link-home"
+              >
+                Home
+              </Link>
               <Link
                 href="/jobs"
                 className={`text-sm font-medium transition-colors hover:text-primary ${
@@ -239,15 +249,13 @@ export function Navbar() {
                       <DropdownMenuItem asChild>
                         <Link
                           href="/messages"
-                          className="flex items-center w-full justify-between"
+                          className="flex items-center w-full"
                           data-testid="link-messages"
                         >
-                          <div className="flex items-center">
-                            <MessageSquare className="mr-2 h-4 w-4" />
-                            <span>Messages</span>
-                          </div>
+                          <MessageSquare className="mr-2 h-4 w-4" />
+                          <span className="flex-1">Messages</span>
                           {totalUnread > 0 && (
-                            <div className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold">
+                            <div className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold ml-2">
                               {totalUnread}
                             </div>
                           )}
@@ -272,15 +280,13 @@ export function Navbar() {
                       <DropdownMenuItem asChild>
                         <Link
                           href="/messages"
-                          className="flex items-center w-full justify-between"
+                          className="flex items-center w-full"
                           data-testid="link-messages"
                         >
-                          <div className="flex items-center">
-                            <MessageSquare className="mr-2 h-4 w-4" />
-                            <span>Messages</span>
-                          </div>
+                          <MessageSquare className="mr-2 h-4 w-4" />
+                          <span className="flex-1">Messages</span>
                           {totalUnread > 0 && (
-                            <div className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold">
+                            <div className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold ml-2">
                               {totalUnread}
                             </div>
                           )}

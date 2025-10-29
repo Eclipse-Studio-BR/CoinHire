@@ -64,7 +64,7 @@ export default function Pricing() {
                 <Card className="p-8 shadow-lg">
                   <div className="text-center mb-6">
                     <div className="flex items-baseline justify-center gap-2 mb-2">
-                      <span className="text-6xl font-bold">$0.15</span>
+                      <span className="text-6xl font-bold">$50</span>
                       <span className="text-2xl text-muted-foreground">USD</span>
                     </div>
                   </div>

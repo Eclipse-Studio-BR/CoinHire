@@ -41,10 +41,8 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       
-      {/* Home route - authenticated users see Jobs, others see Landing */}
-      <Route path="/">
-        {isAuthenticated && user?.role !== 'guest' ? <Jobs /> : <Landing />}
-      </Route>
+      {/* Home route - always show Landing page */}
+      <Route path="/" component={Landing} />
       
       {/* Job routes */}
       <Route path="/jobs" component={Jobs} />

@@ -42,7 +42,7 @@ export default function Login() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      setLocation("/");
+      setLocation("/dashboard");
     }
   }, [isAuthenticated, setLocation]);
 
@@ -53,7 +53,7 @@ export default function Login() {
       toast({
         title: "Welcome back!",
       });
-      setLocation("/");
+      setLocation("/dashboard");
     } catch (error) {
       toast({
         title: "Login failed",
