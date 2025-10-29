@@ -110,11 +110,11 @@ export function CryptoPayment({ amount, currency, jobId, onSuccess }: CryptoPaym
       const data = await response.json();
       console.log("Payment response:", data);
       
-      if (data.invoiceUrl) {
-        // Force HTTPS to avoid mixed content errors
-        const secureUrl = data.invoiceUrl.replace('http://', 'https://');
-        console.log("Setting invoice URL:", secureUrl);
-        setInvoiceUrl(secureUrl);
+      if (data.invoiceId) {
+        // Use the embeddable widget URL format
+        const widgetUrl = `https://nowpayments.io/embeds/payment-widget?iid=${data.invoiceId}`;
+        console.log("Setting widget URL:", widgetUrl);
+        setInvoiceUrl(widgetUrl);
         toast({
           title: "Payment Ready",
           description: "Complete your payment below. We'll automatically detect when it's complete.",
@@ -160,15 +160,19 @@ export function CryptoPayment({ amount, currency, jobId, onSuccess }: CryptoPaym
           </div>
         )}
 
-        <div className="relative w-full bg-white rounded-lg" style={{ height: '600px', minHeight: '600px' }}>
+        <div className="relative w-full rounded-lg flex justify-center" style={{ minHeight: '696px' }}>
           <iframe
             src={invoiceUrl}
-            className="w-full h-full border border-gray-200 rounded-lg"
+            width="410"
+            height="696"
+            frameBorder="0"
+            scrolling="no"
             title="NOWPayments Checkout"
-            allow="payment"
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"
-            style={{ width: '100%', height: '100%', minHeight: '600px' }}
-          />
+            className="rounded-lg"
+            style={{ overflowY: 'hidden' }}
+          >
+            Can't load widget
+          </iframe>
         </div>
 
         <div className="text-center">
