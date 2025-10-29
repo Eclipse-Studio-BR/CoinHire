@@ -111,8 +111,10 @@ export function CryptoPayment({ amount, currency, jobId, onSuccess }: CryptoPaym
       console.log("Payment response:", data);
       
       if (data.invoiceUrl) {
-        console.log("Setting invoice URL:", data.invoiceUrl);
-        setInvoiceUrl(data.invoiceUrl);
+        // Force HTTPS to avoid mixed content errors
+        const secureUrl = data.invoiceUrl.replace('http://', 'https://');
+        console.log("Setting invoice URL:", secureUrl);
+        setInvoiceUrl(secureUrl);
         toast({
           title: "Payment Ready",
           description: "Complete your payment below. We'll automatically detect when it's complete.",
