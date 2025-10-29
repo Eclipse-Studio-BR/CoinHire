@@ -645,7 +645,7 @@ export default function Messages() {
                           <p className="text-sm text-muted-foreground">{selectedApp.job.company?.name}</p>
                         </div>
 
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           {selectedApp.job.location && (
                             <div className="flex items-center gap-2 text-sm">
                               <span className="text-muted-foreground">Location:</span>
@@ -673,6 +673,15 @@ export default function Messages() {
                             </div>
                           )}
                         </div>
+
+                        {selectedApp.job.description && (
+                          <div className="pt-3 border-t">
+                            <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Description</p>
+                            <p className="text-sm text-muted-foreground line-clamp-6">
+                              {selectedApp.job.description}
+                            </p>
+                          </div>
+                        )}
 
                         <Button 
                           className="w-full" 
@@ -944,6 +953,13 @@ export default function Messages() {
                                 <div>
                                   <p className="text-xs font-medium text-muted-foreground mb-1">Location</p>
                                   <p className="text-sm">{selectedApp.job.location}</p>
+                                </div>
+                              )}
+
+                              {selectedApp.job.description && (
+                                <div>
+                                  <p className="text-xs font-medium text-muted-foreground mb-1">Description</p>
+                                  <p className="text-sm line-clamp-3">{selectedApp.job.description}</p>
                                 </div>
                               )}
 

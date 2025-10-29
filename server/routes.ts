@@ -62,8 +62,9 @@ const talentProfileUpdateSchema = z.object({
   timezone: z.string().min(2).optional(),
   hourlyRate: optionalNumericString(),
   monthlyRate: optionalNumericString(),
-  skills: z.string().optional(),
-  languages: z.string().optional(),
+  skills: z.array(z.string()).optional(),
+  tools: z.array(z.string()).optional(),
+  languages: z.array(z.string()).optional(),
   linkedinUrl: z.string().url().optional(),
   telegram: z.string().optional(),
 });
@@ -1298,8 +1299,9 @@ ${company?.name || 'The Team'}`;
       if (payload.timezone !== undefined) updates.timezone = payload.timezone.trim();
       if (payload.hourlyRate !== undefined) updates.hourlyRate = payload.hourlyRate;
       if (payload.monthlyRate !== undefined) updates.monthlyRate = payload.monthlyRate;
-      if (payload.skills !== undefined) updates.skills = splitCommaList(payload.skills);
-      if (payload.languages !== undefined) updates.languages = splitCommaList(payload.languages);
+      if (payload.skills !== undefined) updates.skills = payload.skills;
+      if (payload.tools !== undefined) updates.tools = payload.tools;
+      if (payload.languages !== undefined) updates.languages = payload.languages;
       if (payload.linkedinUrl !== undefined) {
         const trimmed = payload.linkedinUrl.trim();
         updates.linkedinUrl = trimmed.length ? trimmed : null;
@@ -1318,6 +1320,7 @@ ${company?.name || 'The Team'}`;
           headline: updates.headline ?? "",
           bio: updates.bio ?? "",
           skills: updates.skills ?? [],
+          tools: updates.tools ?? [],
           languages: updates.languages ?? [],
           location: updates.location ?? "",
           timezone: updates.timezone ?? "",

@@ -129,6 +129,7 @@ export const talentProfiles = pgTable("talent_profiles", {
   headline: varchar("headline", { length: 255 }),
   bio: text("bio"),
   skills: text("skills").array(),
+  tools: text("tools").array(),
   languages: text("languages").array(),
   experience: text("experience"),
   education: text("education"),

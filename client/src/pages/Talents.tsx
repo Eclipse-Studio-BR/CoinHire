@@ -24,6 +24,7 @@ import {
   X
 } from "lucide-react";
 import { getInitials } from "@/lib/utils";
+import { getToolIcon, getLanguageFlag } from "@/lib/iconHelpers";
 import type { TalentProfile, User } from "@shared/schema";
 
 type TalentWithUser = TalentProfile & {
@@ -55,8 +56,12 @@ export default function Talents() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const { data: talents = [], isLoading } = useQuery<TalentWithUser[]>({
+  const { data: talents = [], isLoading, isFetching } = useQuery<TalentWithUser[]>({
     queryKey: ["/api/talents/public"],
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnReconnect: "always",
+    refetchOnWindowFocus: "always",
   });
 
   // Filter talents based on search and filters
@@ -231,7 +236,7 @@ export default function Talents() {
 
             {/* Talents Listings */}
             <div className={showFilters ? "lg:col-span-3" : "lg:col-span-4"}>
-              {isLoading ? (
+              {isLoading || isFetching ? (
                 <div className="space-y-4">
                   {[...Array(5)].map((_, i) => (
                     <Card key={i} className="p-6 h-48 animate-pulse bg-card">
@@ -304,6 +309,46 @@ export default function Talents() {
                                     {skill}
                                   </Badge>
                                 ))}
+                                {talent.skills.length > 5 && (
+                                  <Badge variant="secondary">+{talent.skills.length - 5} more</Badge>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Tools */}
+                            {talent.tools && talent.tools.length > 0 && (
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {talent.tools.slice(0, 4).map((tool, idx) => (
+                                  <Badge key={idx} variant="outline" className="flex items-center gap-1.5">
+                                    <img 
+                                      src={getToolIcon(tool)} 
+                                      alt={tool}
+                                      className="w-3.5 h-3.5 object-contain"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                      }}
+                                    />
+                                    <span>{tool}</span>
+                                  </Badge>
+                                ))}
+                                {talent.tools.length > 4 && (
+                                  <Badge variant="outline">+{talent.tools.length - 4}</Badge>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Languages */}
+                            {talent.languages && talent.languages.length > 0 && (
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {talent.languages.slice(0, 3).map((language, idx) => (
+                                  <Badge key={idx} variant="secondary" className="flex items-center gap-1.5">
+                                    <span className="text-sm">{getLanguageFlag(language)}</span>
+                                    <span>{language}</span>
+                                  </Badge>
+                                ))}
+                                {talent.languages.length > 3 && (
+                                  <Badge variant="secondary">+{talent.languages.length - 3}</Badge>
+                                )}
                               </div>
                             )}
                           </div>
@@ -316,7 +361,7 @@ export default function Talents() {
                               ? "bg-green-500 hover:bg-green-600 text-white"
                               : talent.jobAvailability === 'open_to_offers'
                               ? "bg-blue-500 hover:bg-blue-600 text-white"
-                              : "bg-gray-500 hover:bg-gray-600 text-white"
+                              : "bg-red-500 hover:bg-red-600 text-white"
                           }
                         >
                           {talent.jobAvailability === 'actively_looking' 

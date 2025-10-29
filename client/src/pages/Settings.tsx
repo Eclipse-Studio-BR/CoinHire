@@ -18,6 +18,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { PublicUser, TalentProfile, Company } from "@shared/schema";
 import { Loader2 } from "lucide-react";
 import { TIMEZONES } from "@/lib/timezones";
+import { SKILLS, TOOLS, LANGUAGES } from "@/lib/skillsAndTools";
+import { MultiSelect } from "@/components/MultiSelect";
 
 const profileFormSchema = z.object({
   firstName: z.string().max(100, "First name must be 100 characters or less").optional(),
@@ -47,8 +49,9 @@ const talentProfileFormSchema = z.object({
   timezone: z.string().max(100).optional().or(z.literal("UTC")),
   hourlyRate: z.string().optional().or(z.literal("")),
   monthlyRate: z.string().optional().or(z.literal("")),
-  skills: z.string().optional().or(z.literal("")),
-  languages: z.string().optional().or(z.literal("")),
+  skills: z.array(z.string()).optional(),
+  tools: z.array(z.string()).optional(),
+  languages: z.array(z.string()).optional(),
   linkedinUrl: z.string().url("Enter a valid URL").optional().or(z.literal("")),
   telegram: z.string().optional().or(z.literal("")),
 });
@@ -76,8 +79,9 @@ const EMPTY_TALENT_PROFILE_VALUES: TalentProfileFormValues = {
   timezone: "UTC",
   hourlyRate: "",
   monthlyRate: "",
-  skills: "",
-  languages: "",
+  skills: [],
+  tools: [],
+  languages: [],
   linkedinUrl: "",
   telegram: "",
 };
@@ -236,8 +240,9 @@ export default function Settings() {
         timezone: values.timezone,
         hourlyRate: values.hourlyRate ?? "",
         monthlyRate: values.monthlyRate ?? "",
-        skills: values.skills ?? "",
-        languages: values.languages ?? "",
+        skills: values.skills ?? [],
+        tools: values.tools ?? [],
+        languages: values.languages ?? [],
         linkedinUrl: values.linkedinUrl,
         telegram: values.telegram,
       });
@@ -672,7 +677,7 @@ export default function Settings() {
                           name="story"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>What's your story?</FormLabel>
+                              <FormLabel>Profile Bio</FormLabel>
                               <FormControl>
                                 <Textarea rows={4} placeholder="Talk about what makes you great" {...field} disabled={talentFormDisabled} />
                               </FormControl>
@@ -750,35 +755,68 @@ export default function Settings() {
                           />
                         </div>
 
-                        <FormField
-                          control={talentProfileForm.control}
-                          name="skills"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Skills (comma separated)</FormLabel>
-                              <FormControl>
-                                <Textarea rows={2} placeholder="Solidity, Rust, Tokenomics" {...field} disabled={talentFormDisabled} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                        <div className="grid gap-6 md:grid-cols-2">
+                          <FormField
+                            control={talentProfileForm.control}
+                            name="skills"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Skills</FormLabel>
+                                <FormControl>
+                                  <MultiSelect
+                                    options={SKILLS}
+                                    selected={field.value || []}
+                                    onChange={field.onChange}
+                                    placeholder="Select skills..."
+                                    disabled={talentFormDisabled}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
 
-                        <FormField
-                          control={talentProfileForm.control}
-                          name="languages"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Languages</FormLabel>
-                              <FormControl>
-                                <Input placeholder="English, Spanish" {...field} disabled={talentFormDisabled} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                          <FormField
+                            control={talentProfileForm.control}
+                            name="tools"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Tools</FormLabel>
+                                <FormControl>
+                                  <MultiSelect
+                                    options={TOOLS}
+                                    selected={field.value || []}
+                                    onChange={field.onChange}
+                                    placeholder="Select tools..."
+                                    disabled={talentFormDisabled}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
 
                         <div className="grid gap-4 md:grid-cols-2">
+                          <FormField
+                            control={talentProfileForm.control}
+                            name="languages"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Languages</FormLabel>
+                                <FormControl>
+                                  <MultiSelect
+                                    options={LANGUAGES}
+                                    selected={field.value || []}
+                                    onChange={field.onChange}
+                                    placeholder="Select languages..."
+                                    disabled={talentFormDisabled}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                           <FormField
                             control={talentProfileForm.control}
                             name="linkedinUrl"
@@ -792,6 +830,9 @@ export default function Settings() {
                               </FormItem>
                             )}
                           />
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
                           <FormField
                             control={talentProfileForm.control}
                             name="telegram"
@@ -916,8 +957,9 @@ function buildTalentProfileDefaults(profile: TalentProfile | null | undefined): 
     timezone: profile.timezone ?? "UTC",
     hourlyRate: profile.hourlyRate ? String(profile.hourlyRate) : "",
     monthlyRate: profile.monthlyRate ? String(profile.monthlyRate) : "",
-    skills: profile.skills?.join(", ") ?? "",
-    languages: profile.languages?.join(", ") ?? "",
+    skills: profile.skills ?? [],
+    tools: profile.tools ?? [],
+    languages: profile.languages ?? [],
     linkedinUrl: profile.linkedinUrl ?? "",
     telegram: profile.telegram ?? "",
   };

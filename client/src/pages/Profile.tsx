@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { getInitials } from "@/lib/utils";
+import { getToolIcon, getLanguageFlag } from "@/lib/iconHelpers";
 import { Loader2, Settings, LogOut, Globe } from "lucide-react";
 import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -232,6 +233,130 @@ export default function Profile() {
 
             {user.role === "talent" && (
               <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Talent Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {talentProfile?.headline && (
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Title</label>
+                        <p>{talentProfile.headline}</p>
+                      </div>
+                    )}
+
+                    {talentProfile?.bio && (
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Bio</label>
+                        <p className="text-sm whitespace-pre-wrap">{talentProfile.bio}</p>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {talentProfile?.location && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Location</label>
+                          <p className="text-sm">{talentProfile.location}</p>
+                        </div>
+                      )}
+
+                      {talentProfile?.timezone && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Timezone</label>
+                          <p className="text-sm">{talentProfile.timezone}</p>
+                        </div>
+                      )}
+
+                      {talentProfile?.hourlyRate && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Hourly Rate</label>
+                          <p className="text-sm">${talentProfile.hourlyRate}/hr USD</p>
+                        </div>
+                      )}
+
+                      {talentProfile?.monthlyRate && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Monthly Rate</label>
+                          <p className="text-sm">${talentProfile.monthlyRate.toLocaleString()}/mo USD</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {talentProfile?.skills && talentProfile.skills.length > 0 && (
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Skills</label>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {talentProfile.skills.map((skill, idx) => (
+                            <Badge key={idx} variant="secondary">{skill}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {talentProfile?.tools && talentProfile.tools.length > 0 && (
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Tools</label>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {talentProfile.tools.map((tool, idx) => (
+                            <Badge key={idx} variant="outline" className="flex items-center gap-1.5">
+                              <img 
+                                src={getToolIcon(tool)} 
+                                alt={tool}
+                                className="w-4 h-4 object-contain"
+                                onError={(e) => {
+                                  // Hide image if it fails to load
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                              <span>{tool}</span>
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {talentProfile?.languages && talentProfile.languages.length > 0 && (
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Languages</label>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {talentProfile.languages.map((language, idx) => (
+                            <Badge key={idx} variant="secondary" className="flex items-center gap-1.5">
+                              <span className="text-base">{getLanguageFlag(language)}</span>
+                              <span>{language}</span>
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 gap-3">
+                      {talentProfile?.linkedinUrl && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">LinkedIn</label>
+                          <p className="text-sm">
+                            <a href={talentProfile.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                              {talentProfile.linkedinUrl}
+                            </a>
+                          </p>
+                        </div>
+                      )}
+
+                      {talentProfile?.telegram && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Telegram</label>
+                          <p className="text-sm">{talentProfile.telegram}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {!talentProfile && (
+                      <p className="text-sm text-muted-foreground">
+                        Complete your profile in Settings to display your information here.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
