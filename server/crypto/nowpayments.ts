@@ -175,10 +175,37 @@ export async function handleWebhook(req: Request, res: Response) {
       if (order_id.startsWith('credit-')) {
         console.log(`💰 Processing credit purchase for order ${order_id}`);
         
-        // Extract user info from the session or payment metadata
-        // For now, we'll need to track this differently
-        // Since webhooks don't have session context, we should store payment metadata
-        console.log(`⚠️ Credit purchase detected but user ID not in webhook. Need to track via payment metadata.`);
+        // Extract user ID from order_id format: credit-{userId}-{timestamp}
+        const parts = order_id.split('-');
+        if (parts.length >= 2) {
+          const userId = parts[1]; // Get userId from credit-{userId}-timestamp
+          
+          try {
+            // Get current user stats
+            const user = await storage.getUser(userId);
+            if (user) {
+              const stats = await storage.getDashboardStats(userId, user.role);
+              const currentBalance = stats.creditsBalance || 0;
+              
+              // Add 1 credit
+              await storage.addCredits({
+                userId: userId,
+                amount: 1,
+                tier: 'normal',
+                balance: currentBalance + 1,
+                reason: 'Crypto payment - Featured Job Credit',
+              });
+              
+              console.log(`✅ Added 1 credit to user ${userId} via crypto payment ${payment_id}`);
+            } else {
+              console.error(`❌ User ${userId} not found for credit purchase`);
+            }
+          } catch (error) {
+            console.error(`❌ Error adding credits for user ${userId}:`, error);
+          }
+        } else {
+          console.error(`❌ Could not parse user ID from order_id: ${order_id}`);
+        }
       } else {
         // This is a job upgrade payment
         console.log(`⬆️ Upgrading job ${order_id} to featured`);
