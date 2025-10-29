@@ -20,7 +20,10 @@ export default function Landing() {
         const res = await apiRequest("GET", "/api/jobs?tier=featured&status=active");
         return res.json();
       },
-      staleTime: 60_000,
+      staleTime: 0,
+      refetchOnMount: "always",
+      refetchOnReconnect: "always",
+      refetchOnWindowFocus: "always",
     });
 
   const { data: latestJobs = [] } =
@@ -31,7 +34,10 @@ export default function Landing() {
         const all = await res.json();
         return all.slice(0, 12);
       },
-      staleTime: 60_000,
+      staleTime: 0,
+      refetchOnMount: "always",
+      refetchOnReconnect: "always",
+      refetchOnWindowFocus: "always",
     });
 
   return (

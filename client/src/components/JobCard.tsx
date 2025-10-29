@@ -25,14 +25,17 @@ export function JobCard({ job, onSave, isSaved }: JobCardProps) {
     <Card
       className={cn(
         "p-6 hover-elevate transition-all duration-200 relative overflow-visible",
+        "bg-card/60 backdrop-blur-md border-white/10",
         isPremium && "border-l-4 border-l-chart-3",
-        isFeatured && "bg-accent/30"
+        isFeatured && "bg-accent/20"
       )}
       data-testid={`card-job-${job.id}`}
     >
       {isFeatured && (
-        <div className="absolute top-4 right-4">
-          <Star className="w-5 h-5 fill-chart-4 text-chart-4" data-testid="icon-featured" />
+        <div className="absolute top-4 right-4 z-10">
+          <Badge variant="secondary" className="bg-chart-4/20 text-chart-4 border-chart-4/30 text-xs font-medium" data-testid="badge-featured">
+            Featured
+          </Badge>
         </div>
       )}
 

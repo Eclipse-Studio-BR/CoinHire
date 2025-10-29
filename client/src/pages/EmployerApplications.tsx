@@ -53,6 +53,10 @@ export default function EmployerApplications() {
   
   const { data = [], isLoading } = useQuery<EmployerApplicationsResponse[]>({
     queryKey: ["/api/employer/applications"],
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnReconnect: "always",
+    refetchOnWindowFocus: "always",
   });
 
   // Fetch messages for the chat dialog

@@ -122,7 +122,7 @@ export default function Messages() {
   });
 
   // Fetch messages for selected application
-  const { data: messages = [] } = useQuery<Message[]>({
+  const { data: messages = [], isLoading: loadingMessages } = useQuery<Message[]>({
     queryKey: ["/api/applications/messages", selectedApplicationId],
     queryFn: async () => {
       if (!selectedApplicationId) return [];
@@ -134,6 +134,7 @@ export default function Messages() {
     },
     enabled: !!selectedApplicationId,
     refetchInterval: 3000,
+    staleTime: 0,
   });
 
   const sendMessageMutation = useMutation({
@@ -151,10 +152,16 @@ export default function Messages() {
     mutationFn: async (applicationId: string) => {
       await apiRequest("PUT", `/api/applications/${applicationId}/messages/read`);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/all-application-messages"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/employer/applications"] });
+    onSuccess: async (_, applicationId) => {
+      // Immediately invalidate and refetch all message-related queries
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/all-application-messages"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/applications"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/employer/applications"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/applications/messages", applicationId] }),
+      ]);
+      // Force immediate refetch
+      queryClient.refetchQueries({ queryKey: ["/api/all-application-messages"] });
     },
   });
 
@@ -431,7 +438,11 @@ export default function Messages() {
 
                     {/* Messages */}
                     <ScrollArea className="flex-1 p-4" id="messages-scroll-area">
-                      {messages.length === 0 ? (
+                      {loadingMessages ? (
+                        <div className="flex items-center justify-center h-full">
+                          <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full"></div>
+                        </div>
+                      ) : messages.length === 0 ? (
                         <div className="flex items-center justify-center h-full">
                           <p className="text-center text-muted-foreground">
                             No messages yet. Start the conversation!
@@ -968,7 +979,11 @@ export default function Messages() {
 
               {/* Messages Area */}
               <div className="flex-1 overflow-y-auto bg-muted/20 p-4">
-                {messages.length === 0 ? (
+                {loadingMessages ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full"></div>
+                  </div>
+                ) : messages.length === 0 ? (
                   <div className="flex items-center justify-center h-full">
                     <p className="text-center text-muted-foreground">
                       No messages yet. Start the conversation!

@@ -48,7 +48,10 @@ export default function Jobs() {
   }, []);
 
   const [sortBy, setSortBy] = useState<string>("recent");
-  const [showFilters, setShowFilters] = useState(true);
+  // Hide filters by default on mobile (screens smaller than 1024px)
+  const [showFilters, setShowFilters] = useState(
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
+  );
 
   const { data: jobs = [], isLoading } = useQuery<JobWithCompany[]>({
     queryKey: [
@@ -62,6 +65,10 @@ export default function Jobs() {
         sort: sortBy,
       },
     ],
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnReconnect: "always",
+    refetchOnWindowFocus: "always",
   });
 
   const clearFilters = () => {
