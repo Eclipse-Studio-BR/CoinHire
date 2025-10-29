@@ -73,8 +73,9 @@ export async function createCryptoPayment(req: Request, res: Response) {
         order_id: orderId,
         order_description: orderDescription,
         ipn_callback_url: `${process.env.APP_URL || "http://localhost:5000"}/api/crypto/webhook`,
-        success_url: `${process.env.APP_URL || "http://localhost:5000"}`,
-        cancel_url: `${process.env.APP_URL || "http://localhost:5000"}`,
+        // Don't redirect after payment - let the iframe stay
+        is_fixed_rate: false,
+        is_fee_paid_by_user: false,
       }),
     });
 
@@ -151,6 +152,9 @@ export async function getPaymentStatus(req: Request, res: Response) {
   }
 }
 
+// Track processed payments to prevent duplicates
+const processedPayments = new Set<string>();
+
 // Webhook handler for payment notifications
 export async function handleWebhook(req: Request, res: Response) {
   try {
@@ -167,6 +171,15 @@ export async function handleWebhook(req: Request, res: Response) {
     // Handle different payment statuses
     if (payment_status === "finished" || payment_status === "confirmed") {
       console.log(`🎉 Payment ${payment_id} confirmed for order ${order_id}`);
+      
+      // Check if we already processed this payment
+      if (processedPayments.has(payment_id)) {
+        console.log(`⚠️ Payment ${payment_id} already processed, skipping duplicate`);
+        return res.status(200).json({ success: true, message: "Already processed" });
+      }
+      
+      // Mark as processed
+      processedPayments.add(payment_id);
       
       // Import storage dynamically to avoid circular dependencies
       const { storage } = await import("../storage");

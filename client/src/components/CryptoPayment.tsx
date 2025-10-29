@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { ExternalLink, Wallet, Loader2 } from "lucide-react";
+import { Wallet, Loader2, CheckCircle2 } from "lucide-react";
 
 interface CryptoPaymentProps {
   amount: number;
@@ -13,7 +13,84 @@ interface CryptoPaymentProps {
 
 export function CryptoPayment({ amount, currency, jobId, onSuccess }: CryptoPaymentProps) {
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
+  const [invoiceUrl, setInvoiceUrl] = useState<string | null>(null);
+  const [isCheckingPayment, setIsCheckingPayment] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!invoiceUrl) return;
+
+    let initialBalance: number | null = null;
+
+    // Get initial balance for credit purchases
+    const getInitialBalance = async () => {
+      if (!jobId) {
+        try {
+          const statsResponse = await apiRequest("GET", "/api/dashboard/stats");
+          const stats = await statsResponse.json();
+          initialBalance = stats.creditsBalance || 0;
+          console.log("Initial credit balance:", initialBalance);
+        } catch (error) {
+          console.error("Error getting initial balance:", error);
+        }
+      }
+    };
+
+    getInitialBalance();
+
+    // Poll for payment completion
+    setIsCheckingPayment(true);
+    const checkInterval = setInterval(async () => {
+      try {
+        if (jobId) {
+          // Check if job was upgraded
+          const jobResponse = await apiRequest("GET", `/api/jobs/${jobId}`);
+          const jobData = await jobResponse.json();
+          if (jobData.tier === 'featured') {
+            clearInterval(checkInterval);
+            setIsCheckingPayment(false);
+            toast({
+              title: "✅ Payment Successful!",
+              description: "Your job has been upgraded to Featured status.",
+              className: "bg-green-600 text-white border-0",
+              duration: 4000,
+            });
+            setTimeout(() => onSuccess(), 2000);
+          }
+        } else {
+          // Check if credits were added
+          const statsResponse = await apiRequest("GET", "/api/dashboard/stats");
+          const stats = await statsResponse.json();
+          const currentBalance = stats.creditsBalance || 0;
+          
+          if (initialBalance !== null && currentBalance > initialBalance) {
+            clearInterval(checkInterval);
+            setIsCheckingPayment(false);
+            toast({
+              title: "✅ Payment Successful!",
+              description: `Credit added to your account! New balance: ${currentBalance}`,
+              className: "bg-green-600 text-white border-0",
+              duration: 4000,
+            });
+            setTimeout(() => onSuccess(), 2000);
+          }
+        }
+      } catch (error) {
+        // Payment not complete yet, continue polling
+      }
+    }, 3000); // Check every 3 seconds
+
+    // Stop checking after 30 minutes
+    const timeout = setTimeout(() => {
+      clearInterval(checkInterval);
+      setIsCheckingPayment(false);
+    }, 30 * 60 * 1000);
+
+    return () => {
+      clearInterval(checkInterval);
+      clearTimeout(timeout);
+    };
+  }, [invoiceUrl, jobId, onSuccess, toast]);
 
   const handlePayWithCrypto = async () => {
     setIsCreatingInvoice(true);
@@ -31,49 +108,11 @@ export function CryptoPayment({ amount, currency, jobId, onSuccess }: CryptoPaym
       const data = await response.json();
       
       if (data.invoiceUrl) {
-        // Open NOWPayments hosted invoice page in a new window
-        const paymentWindow = window.open(data.invoiceUrl, '_blank', 'width=800,height=900');
-        
-        if (paymentWindow) {
-          toast({
-            title: "Payment Window Opened",
-            description: "Complete your payment in the new window. We'll update your account automatically.",
-          });
-          
-          // Poll for payment completion
-          const checkInterval = setInterval(async () => {
-            try {
-              // Check if job was upgraded or credits were added
-              // This is a simple check - in production you'd want to poll the invoice status
-              if (jobId) {
-                const jobResponse = await apiRequest("GET", `/api/jobs/${jobId}`);
-                const jobData = await jobResponse.json();
-                if (jobData.tier === 'featured') {
-                  clearInterval(checkInterval);
-                  toast({
-                    title: "✅ Payment Successful!",
-                    description: "Your job has been upgraded to Featured status.",
-                    className: "bg-green-600 text-white",
-                  });
-                  onSuccess();
-                }
-              }
-            } catch (error) {
-              // Payment not complete yet, continue polling
-            }
-          }, 5000); // Check every 5 seconds
-          
-          // Stop checking after 30 minutes
-          setTimeout(() => {
-            clearInterval(checkInterval);
-          }, 30 * 60 * 1000);
-        } else {
-          toast({
-            title: "Popup Blocked",
-            description: "Please allow popups and try again.",
-            variant: "destructive",
-          });
-        }
+        setInvoiceUrl(data.invoiceUrl);
+        toast({
+          title: "Payment Ready",
+          description: "Complete your payment below. We'll automatically detect when it's complete.",
+        });
       }
     } catch (error: any) {
       console.error("Error creating crypto invoice:", error);
@@ -87,6 +126,45 @@ export function CryptoPayment({ amount, currency, jobId, onSuccess }: CryptoPaym
     }
   };
 
+  // Show embedded iframe if invoice URL is available
+  if (invoiceUrl) {
+    return (
+      <div className="space-y-4">
+        {isCheckingPayment && (
+          <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+              <div>
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  Waiting for payment...
+                </p>
+                <p className="text-xs text-blue-700 dark:text-blue-300">
+                  We'll automatically detect when your payment is complete
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="relative w-full" style={{ height: '600px' }}>
+          <iframe
+            src={invoiceUrl}
+            className="w-full h-full border-0 rounded-lg"
+            title="NOWPayments Checkout"
+            allow="payment"
+          />
+        </div>
+
+        <div className="text-center">
+          <p className="text-xs text-muted-foreground">
+            Complete your payment above • Powered by NOWPayments
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show initial payment screen
   return (
     <div className="space-y-6">
       <div className="text-center">
@@ -109,22 +187,22 @@ export function CryptoPayment({ amount, currency, jobId, onSuccess }: CryptoPaym
           </span>
         </div>
         <p className="text-xs text-muted-foreground text-center">
-          You'll be able to choose your preferred cryptocurrency on the next page
+          Choose your preferred cryptocurrency and complete payment
         </p>
       </div>
 
       <div className="space-y-3 text-sm text-muted-foreground">
         <div className="flex items-start gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0"></div>
+          <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
           <p>Choose from 150+ cryptocurrencies including BTC, ETH, USDT, and more</p>
         </div>
         <div className="flex items-start gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0"></div>
+          <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
           <p>Secure payment processed by NOWPayments</p>
         </div>
         <div className="flex items-start gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0"></div>
-          <p>Your job will be automatically upgraded when payment is confirmed</p>
+          <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+          <p>Automatic upgrade when payment is confirmed</p>
         </div>
       </div>
 
@@ -137,11 +215,11 @@ export function CryptoPayment({ amount, currency, jobId, onSuccess }: CryptoPaym
         {isCreatingInvoice ? (
           <>
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            Creating Payment...
+            Loading Payment...
           </>
         ) : (
           <>
-            <ExternalLink className="h-4 w-4 mr-2" />
+            <Wallet className="h-4 w-4 mr-2" />
             Continue to Payment
           </>
         )}
