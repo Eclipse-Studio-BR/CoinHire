@@ -16,6 +16,10 @@ import {
   Settings,
   LayoutDashboard,
   MessageSquare,
+  BookOpen,
+  Bell,
+  Twitter,
+  MessageCircle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { getInitials } from "@/lib/utils";
@@ -120,64 +124,108 @@ export function Navbar() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
-          <div className="flex items-center gap-8">
-            <Link href="/" data-testid="link-home-logo">
-              <img 
-                src="/images/logos/coinhire.png" 
-                alt="CoinHire" 
-                className="h-8 cursor-pointer"
-              />
-            </Link>
+          {/* Logo */}
+          <Link href="/" data-testid="link-home-logo">
+            <img 
+              src="/images/logos/coinhire.png" 
+              alt="CoinHire" 
+              className="h-8 cursor-pointer"
+            />
+          </Link>
 
-            <nav className="hidden md:flex items-center gap-6">
-              <Link
-                href="/"
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  location === "/"
-                    ? "text-foreground"
-                    : "text-muted-foreground"
-                }`}
-                data-testid="link-home"
-              >
-                Home
-              </Link>
-              <Link
-                href="/jobs"
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  location === "/jobs"
-                    ? "text-foreground"
-                    : "text-muted-foreground"
-                }`}
-                data-testid="link-jobs"
-              >
-                Find Jobs
-              </Link>
-              <Link
-                href="/companies"
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  location === "/companies"
-                    ? "text-foreground"
-                    : "text-muted-foreground"
-                }`}
-                data-testid="link-companies"
-              >
-                Companies
-              </Link>
-              {isAuthenticated && user?.role === "employer" && (
-                <Link
-                  href="/post-job"
-                  className={`text-sm font-medium transition-colors hover:text-primary ${
-                    location === "/post-job"
-                      ? "text-foreground"
-                      : "text-muted-foreground"
-                  }`}
-                  data-testid="link-post-job"
+          {/* Centered Navigation */}
+          <nav className="hidden md:flex items-center gap-8 absolute left-1/2 transform -translate-x-1/2">
+            <Link
+              href="/"
+              className={`text-sm font-medium transition-colors hover:text-primary ${
+                location === "/"
+                  ? "text-foreground"
+                  : "text-muted-foreground"
+              }`}
+              data-testid="link-home"
+            >
+              Home
+            </Link>
+            <Link
+              href="/jobs"
+              className={`text-sm font-medium transition-colors hover:text-primary ${
+                location === "/jobs"
+                  ? "text-foreground"
+                  : "text-muted-foreground"
+              }`}
+              data-testid="link-jobs"
+            >
+              Jobs
+            </Link>
+            <Link
+              href="/companies"
+              className={`text-sm font-medium transition-colors hover:text-primary ${
+                location === "/companies"
+                  ? "text-foreground"
+                  : "text-muted-foreground"
+              }`}
+              data-testid="link-companies"
+            >
+              Startups
+            </Link>
+            <button
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary cursor-not-allowed opacity-50"
+              disabled
+            >
+              Newsletter
+            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-primary data-[state=open]:text-foreground">
+                Resources
+                <svg 
+                  className="w-4 h-4" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
                 >
-                  Post a Job
-                </Link>
-              )}
-            </nav>
-          </div>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-48">
+                <DropdownMenuItem disabled className="cursor-not-allowed opacity-50">
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  Blog
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled className="cursor-not-allowed opacity-50">
+                  <Bell className="mr-2 h-4 w-4" />
+                  Job Alerts
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href={isAuthenticated ? "/dashboard" : "/login"} className="flex items-center w-full">
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    Dashboard
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem disabled className="cursor-not-allowed opacity-50">
+                  <Twitter className="mr-2 h-4 w-4" />
+                  Twitter
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled className="cursor-not-allowed opacity-50">
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  Discord
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Link
+              href="/pricing"
+              className={`text-sm font-medium transition-colors hover:text-primary ${
+                location === "/pricing"
+                  ? "text-foreground"
+                  : "text-muted-foreground"
+              }`}
+              data-testid="link-pricing"
+            >
+              Pricing
+            </Link>
+          </nav>
+
+          {/* Right side - User menu */}
 
           <div className="flex items-center gap-4">
             {!isAuthenticated ? (
