@@ -175,10 +175,17 @@ export async function handleWebhook(req: Request, res: Response) {
       if (order_id.startsWith('credit-')) {
         console.log(`💰 Processing credit purchase for order ${order_id}`);
         
-        // Extract user ID from order_id format: credit-{userId}-{timestamp}
-        const parts = order_id.split('-');
-        if (parts.length >= 2) {
-          const userId = parts[1]; // Get userId from credit-{userId}-timestamp
+        // Extract user ID from order_id format: credit-{userId(UUID)}-{timestamp}
+        // Remove 'credit-' prefix and last timestamp part
+        const withoutPrefix = order_id.substring(7); // Remove 'credit-'
+        const parts = withoutPrefix.split('-');
+        
+        // User ID is a UUID (5 parts), timestamp is the last part
+        // So userId is all parts except the last one, rejoined with '-'
+        if (parts.length >= 6) { // UUID has 5 parts + timestamp = 6 parts minimum
+          const userId = parts.slice(0, 5).join('-'); // Reconstruct UUID from first 5 parts
+          
+          console.log(`📋 Extracted user ID: ${userId}`);
           
           try {
             // Get current user stats
