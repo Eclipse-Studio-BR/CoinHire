@@ -39,9 +39,20 @@ export default function Talents() {
   const [sortBy, setSortBy] = useState("recent");
   const [showFilters, setShowFilters] = useState(false);
 
-  // Set initial filter visibility based on screen size after mount
+  // Detect screen size and show/hide filters accordingly
   useEffect(() => {
-    setShowFilters(window.innerWidth >= 1024);
+    const handleResize = () => {
+      setShowFilters(window.innerWidth >= 1024);
+    };
+    
+    // Set initial state
+    handleResize();
+    
+    // Add event listener
+    window.addEventListener('resize', handleResize);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const { data: talents = [], isLoading } = useQuery<TalentWithUser[]>({

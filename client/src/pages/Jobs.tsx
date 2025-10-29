@@ -48,12 +48,22 @@ export default function Jobs() {
   }, []);
 
   const [sortBy, setSortBy] = useState<string>("recent");
-  // Hide filters by default on mobile (screens smaller than 1024px)
   const [showFilters, setShowFilters] = useState(false);
 
-  // Set initial filter visibility based on screen size after mount
+  // Detect screen size and show/hide filters accordingly
   useEffect(() => {
-    setShowFilters(window.innerWidth >= 1024);
+    const handleResize = () => {
+      setShowFilters(window.innerWidth >= 1024);
+    };
+    
+    // Set initial state
+    handleResize();
+    
+    // Add event listener
+    window.addEventListener('resize', handleResize);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const { data: jobs = [], isLoading } = useQuery<JobWithCompany[]>({
