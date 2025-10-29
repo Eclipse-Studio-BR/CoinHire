@@ -455,23 +455,24 @@ export default function Dashboard() {
                           {formatTimeAgo(application.createdAt)}
                         </TableCell>
                         <TableCell>
-                          <Dialog 
-                            open={selectedApplicationId === application.id} 
-                            onOpenChange={(open) => {
-                              if (open) {
-                                setSelectedApplicationId(application.id);
-                                markAsReadMutation.mutate(application.id);
-                              } else {
-                                setSelectedApplicationId(null);
-                              }
-                            }}
-                          >
-                            <DialogTrigger asChild>
-                              <Button size="sm" variant="outline">
-                                <MessageSquare className="h-4 w-4 mr-2" />
-                                View
-                              </Button>
-                            </DialogTrigger>
+                          {application.status !== 'rejected' ? (
+                            <Dialog 
+                              open={selectedApplicationId === application.id} 
+                              onOpenChange={(open) => {
+                                if (open) {
+                                  setSelectedApplicationId(application.id);
+                                  markAsReadMutation.mutate(application.id);
+                                } else {
+                                  setSelectedApplicationId(null);
+                                }
+                              }}
+                            >
+                              <DialogTrigger asChild>
+                                <Button size="sm" variant="outline">
+                                  <MessageSquare className="h-4 w-4 mr-2" />
+                                  View
+                                </Button>
+                              </DialogTrigger>
                             <DialogContent className="max-w-2xl">
                               <DialogHeader>
                                 <DialogTitle>Messages - {application.job?.title}</DialogTitle>
@@ -541,6 +542,9 @@ export default function Dashboard() {
                               )}
                             </DialogContent>
                           </Dialog>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">-</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Link href={`/jobs/${application.jobId}`}>

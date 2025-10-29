@@ -924,6 +924,34 @@ ${company?.name || 'The Team'}`;
         return res.status(403).json({ error: 'You do not have permission to update this application' });
       }
       
+      // If status is being changed to rejected, send automatic rejection message
+      if (validatedData.status === 'rejected' && existingApplication.status !== 'rejected') {
+        // Get applicant and company details for the message
+        const applicant = await storage.getUser(existingApplication.userId);
+        const company = await storage.getCompany(job.companyId);
+
+        // Send automated rejection message
+        const rejectionMessage = `Dear ${applicant?.firstName || 'Applicant'},
+
+Thank you for your interest in ${company?.name || 'our company'} and the time you spent in applying for the ${job.title} position. We regret to inform you that we have closed the search for this role.
+
+We will be advertising more positions in the coming months however and hope you'll keep us in mind and we encourage you to apply again.
+
+We wish you all the best in your job search and future professional endeavors.
+
+Best,
+${company?.name || 'The Team'}`;
+
+        await storage.createMessage({
+          applicationId: req.params.id,
+          senderId: req.session.userId!,
+          message: rejectionMessage,
+          isRead: false,
+        });
+        
+        console.log(`✅ Sent automatic rejection message for application ${req.params.id}`);
+      }
+      
       const application = await storage.updateApplication(req.params.id, validatedData);
       
       res.json(application);
