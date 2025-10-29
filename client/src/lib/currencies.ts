@@ -9,7 +9,7 @@ export interface CurrencyConfig {
 }
 
 // Base price in USD cents
-const BASE_PRICE_USD = 5000; // $50.00
+const BASE_PRICE_USD = 200; // $2.00 (TEMPORARY FOR TESTING - normally 5000)
 
 export const SUPPORTED_CURRENCIES: Record<string, CurrencyConfig> = {
   USD: {
