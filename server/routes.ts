@@ -1215,6 +1215,45 @@ ${company?.name || 'The Team'}`;
     }
   });
 
+  // Get single public talent profile by ID
+  app.get('/api/talents/:id', async (req: Request, res: Response) => {
+    try {
+      const talentId = req.params.id;
+      const profile = await storage.getTalentProfile(talentId);
+      
+      if (!profile) {
+        return res.status(404).json({ error: 'Talent profile not found' });
+      }
+
+      // Only return if profile is public
+      if (!profile.isPublic) {
+        return res.status(404).json({ error: 'Talent profile not found' });
+      }
+
+      // Get user information
+      const user = await storage.getUser(talentId);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Combine talent profile with user info
+      const talentWithUser = {
+        ...profile,
+        user: {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          profileImageUrl: user.profileImageUrl,
+        },
+      };
+
+      res.json(talentWithUser);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Toggle talent profile visibility
   app.put('/api/talent/profile/visibility', requireRole('talent'), async (req: Request, res: Response) => {
     try {

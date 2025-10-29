@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { getInitials } from "@/lib/utils";
 import { getToolIcon, getLanguageFlag } from "@/lib/iconHelpers";
+import { Link } from "wouter";
 import type { TalentProfile, User } from "@shared/schema";
 
 type TalentWithUser = TalentProfile & {
@@ -250,7 +251,7 @@ export default function Talents() {
                 <div className="space-y-4">
                   {sortedTalents.map((talent) => (
                     <Card key={talent.id} className="p-6 hover:shadow-lg transition-shadow">
-                      <div className="flex items-start justify-between">
+                      <div className="flex items-start justify-between gap-4">
                         <div className="flex items-start gap-4 flex-1">
                           {/* Avatar */}
                           <Avatar className="h-16 w-16">
@@ -354,22 +355,29 @@ export default function Talents() {
                           </div>
                         </div>
 
-                        {/* Status Badge */}
-                        <Badge 
-                          className={
-                            talent.jobAvailability === 'actively_looking' 
-                              ? "bg-green-500 hover:bg-green-600 text-white"
+                        {/* Actions */}
+                        <div className="flex flex-col items-end gap-2">
+                          <Badge 
+                            className={
+                              talent.jobAvailability === 'actively_looking' 
+                                ? "bg-green-500 hover:bg-green-600 text-white"
+                                : talent.jobAvailability === 'open_to_offers'
+                                ? "bg-blue-500 hover:bg-blue-600 text-white"
+                                : "bg-red-500 hover:bg-red-600 text-white"
+                            }
+                          >
+                            {talent.jobAvailability === 'actively_looking' 
+                              ? "Actively Looking"
                               : talent.jobAvailability === 'open_to_offers'
-                              ? "bg-blue-500 hover:bg-blue-600 text-white"
-                              : "bg-red-500 hover:bg-red-600 text-white"
-                          }
-                        >
-                          {talent.jobAvailability === 'actively_looking' 
-                            ? "Actively Looking"
-                            : talent.jobAvailability === 'open_to_offers'
-                            ? "Open To Offers"
-                            : "Not Available"}
-                        </Badge>
+                              ? "Open To Offers"
+                              : "Not Available"}
+                          </Badge>
+                          <Button asChild size="sm">
+                            <Link href={`/talents/${talent.userId}`}>
+                              View Profile
+                            </Link>
+                          </Button>
+                        </div>
                       </div>
                     </Card>
                   ))}

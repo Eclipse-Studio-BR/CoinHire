@@ -24,6 +24,7 @@ import Register from "@/pages/Register";
 import EmployerApplications from "@/pages/EmployerApplications";
 import Messages from "@/pages/Messages";
 import Talents from "@/pages/Talents";
+import TalentDetail from "@/pages/TalentDetail";
 
 function Router() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -55,7 +56,8 @@ function Router() {
       <Route path="/companies/:slug" component={CompanyDetail} />
       
       {/* Talents route */}
-      <Route path="/talents" component={Talents} />
+            <Route path="/talents" component={Talents} />
+            <Route path="/talents/:id" component={TalentDetail} />
       
       {/* User routes */}
       <Route path="/dashboard" component={Dashboard} />
