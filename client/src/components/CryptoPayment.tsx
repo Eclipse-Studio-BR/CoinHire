@@ -99,6 +99,8 @@ export function CryptoPayment({ amount, currency, jobId, onSuccess }: CryptoPaym
       // Convert amount from cents to major currency unit
       const amountInMajorUnit = amount / 100;
       
+      console.log("Creating payment with amount:", amountInMajorUnit, currency);
+      
       const response = await apiRequest("POST", "/api/crypto/create-payment", {
         priceAmount: amountInMajorUnit,
         priceCurrency: currency,
@@ -106,12 +108,21 @@ export function CryptoPayment({ amount, currency, jobId, onSuccess }: CryptoPaym
       });
 
       const data = await response.json();
+      console.log("Payment response:", data);
       
       if (data.invoiceUrl) {
+        console.log("Setting invoice URL:", data.invoiceUrl);
         setInvoiceUrl(data.invoiceUrl);
         toast({
           title: "Payment Ready",
           description: "Complete your payment below. We'll automatically detect when it's complete.",
+        });
+      } else {
+        console.error("No invoice URL in response:", data);
+        toast({
+          title: "Error",
+          description: "Failed to get payment URL. Please try again.",
+          variant: "destructive",
         });
       }
     } catch (error: any) {
@@ -128,6 +139,7 @@ export function CryptoPayment({ amount, currency, jobId, onSuccess }: CryptoPaym
 
   // Show embedded iframe if invoice URL is available
   if (invoiceUrl) {
+    console.log("Rendering iframe with URL:", invoiceUrl);
     return (
       <div className="space-y-4">
         {isCheckingPayment && (
@@ -146,18 +158,23 @@ export function CryptoPayment({ amount, currency, jobId, onSuccess }: CryptoPaym
           </div>
         )}
 
-        <div className="relative w-full" style={{ height: '600px' }}>
+        <div className="relative w-full bg-white rounded-lg" style={{ height: '600px', minHeight: '600px' }}>
           <iframe
             src={invoiceUrl}
-            className="w-full h-full border-0 rounded-lg"
+            className="w-full h-full border border-gray-200 rounded-lg"
             title="NOWPayments Checkout"
             allow="payment"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"
+            style={{ width: '100%', height: '100%', minHeight: '600px' }}
           />
         </div>
 
         <div className="text-center">
           <p className="text-xs text-muted-foreground">
             Complete your payment above • Powered by NOWPayments
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Invoice URL: {invoiceUrl.substring(0, 50)}...
           </p>
         </div>
       </div>
