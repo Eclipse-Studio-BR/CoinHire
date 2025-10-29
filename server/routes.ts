@@ -13,6 +13,12 @@ import path from "path";
 import fs from "fs";
 import { randomUUID } from "crypto";
 import { generateUniqueCompanySlug } from "./utils/slug";
+import {
+  createCryptoPayment,
+  getPaymentStatus,
+  handleWebhook,
+  getAvailableCurrencies,
+} from "./crypto/nowpayments";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe key: STRIPE_SECRET_KEY');
@@ -1338,6 +1344,22 @@ ${company?.name || 'The Team'}`;
       res.status(500).json({ error: error.message });
     }
   });
+
+  // ==================== Crypto Payments (NOWPayments) ====================
+
+  // Create crypto payment
+  app.post('/api/crypto/create-payment', requireAuth, createCryptoPayment);
+
+  // Get payment status
+  app.get('/api/crypto/payment-status/:paymentId', requireAuth, getPaymentStatus);
+
+  // Webhook handler for NOWPayments
+  app.post('/api/crypto/webhook', handleWebhook);
+
+  // Get available currencies
+  app.get('/api/crypto/currencies', getAvailableCurrencies);
+
+  // ==================== Stripe Payments ====================
 
   // Stripe webhook
   app.post('/api/stripe-webhook', async (req: Request, res: Response) => {
