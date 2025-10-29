@@ -15,7 +15,9 @@ import {
   DollarSign,
   ArrowLeft,
   Loader2,
-  ExternalLink
+  Linkedin,
+  Send,
+  Mail
 } from "lucide-react";
 import { getInitials } from "@/lib/utils";
 import { getToolIcon, getLanguageFlag } from "@/lib/iconHelpers";
@@ -247,35 +249,48 @@ export default function TalentDetail() {
             {/* Sidebar */}
             <div className="lg:col-span-1 space-y-6">
               {/* Contact Links */}
-              <Card>
-                <CardContent className="pt-6">
-                  <h2 className="text-lg font-semibold mb-4">Contact</h2>
-                  <div className="space-y-3">
-                    {talent.linkedinUrl && (
-                      <a
-                        href={talent.linkedinUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-sm text-primary hover:underline"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                        LinkedIn Profile
-                      </a>
-                    )}
-                    {talent.telegram && (
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">Telegram:</span>
-                        <p className="font-medium">{talent.telegram}</p>
-                      </div>
-                    )}
-                    {!talent.linkedinUrl && !talent.telegram && (
-                      <p className="text-sm text-muted-foreground">
-                        No contact information provided
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+              {(talent.linkedinUrl || talent.telegram || talent.user.email) && (
+                <Card>
+                  <CardContent className="pt-6">
+                    <h2 className="text-lg font-semibold mb-4">Contact</h2>
+                    <div className="flex gap-3">
+                      {talent.linkedinUrl && (
+                        <a
+                          href={talent.linkedinUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center w-10 h-10 rounded-full bg-[#0077B5] text-white hover:opacity-90 transition-opacity"
+                          title="LinkedIn Profile"
+                        >
+                          <Linkedin className="h-5 w-5" />
+                        </a>
+                      )}
+                      {talent.telegram && (
+                        <a
+                          href={talent.telegram.startsWith('@') ? `https://t.me/${talent.telegram.substring(1)}` : talent.telegram}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center w-10 h-10 rounded-full bg-[#0088cc] text-white hover:opacity-90 transition-opacity"
+                          title={`Telegram: ${talent.telegram}`}
+                        >
+                          <Send className="h-5 w-5" />
+                        </a>
+                      )}
+                      {talent.user.email && (
+                        <a
+                          href={`mailto:${talent.user.email}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center w-10 h-10 rounded-full bg-muted text-foreground hover:bg-muted/80 transition-colors"
+                          title={`Email: ${talent.user.email}`}
+                        >
+                          <Mail className="h-5 w-5" />
+                        </a>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Additional Info */}
               <Card>
