@@ -142,6 +142,10 @@ export const talentProfiles = pgTable("talent_profiles", {
   telegram: varchar("telegram", { length: 255 }),
   resumeUrl: varchar("resume_url", { length: 500 }),
   isPublic: boolean("is_public").default(true).notNull(),
+  // New preference fields
+  preferredJobTypes: text("preferred_job_types").array(), // ['full_time', 'part_time', 'contract', 'internship']
+  jobAvailability: varchar("job_availability", { length: 50 }), // 'actively_looking', 'open_to_offers', 'not_available'
+  workFlexibility: text("work_flexibility").array(), // ['onsite', 'remote']
   lastActiveAt: timestamp("last_active_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

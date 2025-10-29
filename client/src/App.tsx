@@ -23,6 +23,7 @@ import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import EmployerApplications from "@/pages/EmployerApplications";
 import Messages from "@/pages/Messages";
+import Talents from "@/pages/Talents";
 
 function Router() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -52,6 +53,9 @@ function Router() {
       {/* Company routes */}
       <Route path="/companies" component={Companies} />
       <Route path="/companies/:slug" component={CompanyDetail} />
+      
+      {/* Talents route */}
+      <Route path="/talents" component={Talents} />
       
       {/* User routes */}
       <Route path="/dashboard" component={Dashboard} />

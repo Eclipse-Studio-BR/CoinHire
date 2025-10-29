@@ -49,9 +49,12 @@ export default function Jobs() {
 
   const [sortBy, setSortBy] = useState<string>("recent");
   // Hide filters by default on mobile (screens smaller than 1024px)
-  const [showFilters, setShowFilters] = useState(
-    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
-  );
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Set initial filter visibility based on screen size after mount
+  useEffect(() => {
+    setShowFilters(window.innerWidth >= 1024);
+  }, []);
 
   const { data: jobs = [], isLoading } = useQuery<JobWithCompany[]>({
     queryKey: [
@@ -87,11 +90,12 @@ export default function Jobs() {
         <div className="container mx-auto px-4 py-8">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold mb-2" data-testid="text-page-title">
+            <h1 className="text-3xl md:text-4xl font-bold mb-3" data-testid="text-page-title">
               Find Web3 Jobs
             </h1>
-            <p className="text-muted-foreground">
-              {jobs.length} {jobs.length === 1 ? "opportunity" : "opportunities"} available
+            <p className="text-muted-foreground max-w-4xl">
+              Explore Web3 and blockchain job opportunities at leading companies and startups. 
+              Find your next role in decentralized technology, from development to marketing and beyond.
             </p>
           </div>
 

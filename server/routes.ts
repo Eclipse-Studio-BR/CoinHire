@@ -1204,6 +1204,89 @@ ${company?.name || 'The Team'}`;
     }
   });
 
+  // Get all public talent profiles
+  app.get('/api/talents/public', async (req: Request, res: Response) => {
+    try {
+      const publicTalents = await storage.getPublicTalentProfiles();
+      res.json(publicTalents);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Toggle talent profile visibility
+  app.put('/api/talent/profile/visibility', requireRole('talent'), async (req: Request, res: Response) => {
+    try {
+      const { isPublic } = req.body;
+      
+      if (typeof isPublic !== 'boolean') {
+        return res.status(400).json({ error: 'isPublic must be a boolean' });
+      }
+
+      const userId = req.session.userId!;
+      const existingProfile = await storage.getTalentProfile(userId);
+
+      if (!existingProfile) {
+        // Create profile if it doesn't exist
+        const created = await storage.createTalentProfile({
+          userId,
+          headline: "",
+          bio: "",
+          skills: [],
+          languages: [],
+          location: "",
+          timezone: "",
+          hourlyRate: null,
+          monthlyRate: null,
+          portfolioUrl: null,
+          githubUrl: null,
+          experience: null,
+          education: null,
+          linkedinUrl: null,
+          telegram: null,
+          resumeUrl: null,
+          isPublic,
+        });
+        return res.json(created);
+      }
+
+      const updatedProfile = await storage.updateTalentProfile(userId, { isPublic });
+      res.json(updatedProfile);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update talent profile preferences
+  app.put('/api/talent/profile/preferences', requireRole('talent'), async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId!;
+      const existingProfile = await storage.getTalentProfile(userId);
+
+      if (!existingProfile) {
+        return res.status(404).json({ error: 'Profile not found' });
+      }
+
+      // Validate and extract only preference fields
+      const updates: Partial<InsertTalentProfile> = {};
+      
+      if (req.body.preferredJobTypes !== undefined) {
+        updates.preferredJobTypes = req.body.preferredJobTypes;
+      }
+      if (req.body.jobAvailability !== undefined) {
+        updates.jobAvailability = req.body.jobAvailability;
+      }
+      if (req.body.workFlexibility !== undefined) {
+        updates.workFlexibility = req.body.workFlexibility;
+      }
+
+      const updatedProfile = await storage.updateTalentProfile(userId, updates);
+      res.json(updatedProfile);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.put('/api/talent/profile', requireRole('talent'), async (req: Request, res: Response) => {
     try {
       const payload = talentProfileUpdateSchema.parse(req.body);

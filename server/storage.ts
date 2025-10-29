@@ -125,6 +125,7 @@ export interface IStorage {
   getTalentProfile(userId: string): Promise<TalentProfile | undefined>;
   createTalentProfile(profile: InsertTalentProfile): Promise<TalentProfile>;
   updateTalentProfile(userId: string, updates: Partial<InsertTalentProfile>): Promise<TalentProfile | undefined>;
+  getPublicTalentProfiles(): Promise<Array<TalentProfile & { user: Pick<User, 'id' | 'firstName' | 'lastName' | 'email' | 'profileImageUrl'> }>>;
 
   // Saved Jobs
   getSavedJobs(userId: string): Promise<SavedJob[]>;
@@ -634,6 +635,33 @@ export class DbStorage implements IStorage {
       .where(eq(talentProfiles.userId, userId))
       .returning();
     return profile;
+  }
+
+  async getPublicTalentProfiles(): Promise<Array<TalentProfile & { user: Pick<User, 'id' | 'firstName' | 'lastName' | 'email' | 'profileImageUrl'> }>> {
+    const profiles = await db
+      .select({
+        profile: talentProfiles,
+        userId: users.id,
+        userFirstName: users.firstName,
+        userLastName: users.lastName,
+        userEmail: users.email,
+        userProfileImageUrl: users.profileImageUrl,
+      })
+      .from(talentProfiles)
+      .innerJoin(users, eq(talentProfiles.userId, users.id))
+      .where(eq(talentProfiles.isPublic, true))
+      .orderBy(desc(talentProfiles.updatedAt));
+
+    return profiles.map(row => ({
+      ...row.profile,
+      user: {
+        id: row.userId,
+        firstName: row.userFirstName,
+        lastName: row.userLastName,
+        email: row.userEmail,
+        profileImageUrl: row.userProfileImageUrl,
+      },
+    }));
   }
 
   // Saved Jobs

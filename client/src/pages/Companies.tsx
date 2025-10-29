@@ -4,14 +4,19 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { CompanyCard } from "@/components/CompanyCard";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Search } from "lucide-react";
+import { Search, MapPin } from "lucide-react";
 import type { Company } from "@shared/schema";
 
 type CompanyWithStats = Company & { jobCount: number };
 
 export default function Companies() {
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchName, setSearchName] = useState("");
+  const [searchLocation, setSearchLocation] = useState("");
+
+  // Combine both search terms
+  const searchTerm = [searchName, searchLocation].filter(Boolean).join(" ");
 
   const { data: companies = [], isLoading } = useQuery<CompanyWithStats[]>({
     queryKey: ["/api/companies", { search: searchTerm }],
@@ -27,26 +32,44 @@ export default function Companies() {
 
       <main className="flex-1">
         <div className="container mx-auto px-4 py-8">
+          {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold mb-2" data-testid="text-page-title">
+            <h1 className="text-3xl md:text-4xl font-bold mb-3" data-testid="text-page-title">
               Web3 Companies Hiring
             </h1>
-            <p className="text-muted-foreground">
-              {companies.length} {companies.length === 1 ? 'company' : 'companies'} actively hiring
+            <p className="text-muted-foreground max-w-4xl">
+              Discover Web3 and blockchain companies that are actively hiring. 
+              Browse company profiles, explore their culture, and find open positions at innovative organizations shaping the future of decentralized technology.
             </p>
           </div>
 
+          {/* Search Bar */}
           <Card className="p-4 mb-8">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search companies by name or location..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-                data-testid="input-search-companies"
-              />
+            <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
+              <div className="flex-1 relative">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-500" />
+                <Input
+                  placeholder="Company Name"
+                  value={searchName}
+                  onChange={(e) => setSearchName(e.target.value)}
+                  className="pl-12 h-14"
+                  data-testid="input-search-companies"
+                />
+              </div>
+              <div className="flex gap-3">
+                <div className="flex-1 relative">
+                  <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-500" />
+                  <Input
+                    placeholder="Location"
+                    value={searchLocation}
+                    onChange={(e) => setSearchLocation(e.target.value)}
+                    className="pl-12 h-14"
+                  />
+                </div>
+                <Button className="h-14 px-8">
+                  <Search className="h-5 w-5" />
+                </Button>
+              </div>
             </div>
           </Card>
 

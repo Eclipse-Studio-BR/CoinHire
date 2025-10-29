@@ -166,7 +166,18 @@ export function Navbar() {
               }`}
               data-testid="link-companies"
             >
-              Startups
+              Companies
+            </Link>
+            <Link
+              href="/talents"
+              className={`text-sm font-medium transition-colors hover:text-primary ${
+                location === "/talents"
+                  ? "text-foreground"
+                  : "text-muted-foreground"
+              }`}
+              data-testid="link-talents"
+            >
+              Talents
             </Link>
             <button
               className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary cursor-not-allowed opacity-50"
