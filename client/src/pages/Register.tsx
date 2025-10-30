@@ -14,11 +14,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { PublicFileUpload } from "@/components/PublicFileUpload";
+import { MultiSelect } from "@/components/MultiSelect";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { TIMEZONES } from "@/lib/timezones";
-import { Check, Building2, UserRound } from "lucide-react";
+import { SKILLS, TOOLS, LANGUAGES } from "@/lib/skillsAndTools";
+import { Check, Building2, UserRound, Globe } from "lucide-react";
 
 const passwordSchema = z
   .string()
@@ -43,10 +45,15 @@ const talentFormSchema = z
     monthlyRate: z.string().optional().or(z.literal("")),
     location: z.string().min(2, "Location is required"),
     timezone: z.string().min(2, "Timezone is required"),
-    skills: z.string().min(1, "List at least one skill"),
-    languages: z.string().optional().or(z.literal("")),
+    skills: z.array(z.string()).min(1, "Select at least one skill"),
+    tools: z.array(z.string()).optional(),
+    languages: z.array(z.string()).optional(),
     linkedin: z.string().url("Enter a valid URL").optional().or(z.literal("")),
     telegram: z.string().optional().or(z.literal("")),
+    isPublic: z.boolean().optional(),
+    preferredJobTypes: z.array(z.string()).optional(),
+    jobAvailability: z.string().optional(),
+    workFlexibility: z.array(z.string()).optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     path: ["confirmPassword"],
@@ -211,10 +218,15 @@ function TalentRegisterForm({ onBack }: { onBack: () => void }) {
       monthlyRate: "",
       location: "",
       timezone: "UTC",
-      skills: "",
-      languages: "",
+      skills: [],
+      tools: [],
+      languages: [],
       linkedin: "",
       telegram: "",
+      isPublic: true,
+      preferredJobTypes: [],
+      jobAvailability: "",
+      workFlexibility: [],
     },
   });
   const { toast } = useToast();
@@ -236,9 +248,14 @@ function TalentRegisterForm({ onBack }: { onBack: () => void }) {
       location: values.location,
       timezone: values.timezone,
       skills: values.skills,
+      tools: values.tools,
       languages: values.languages,
       linkedin: values.linkedin?.trim() || undefined,
       telegram: values.telegram?.trim() || undefined,
+      isPublic: values.isPublic,
+      preferredJobTypes: values.preferredJobTypes,
+      jobAvailability: values.jobAvailability,
+      workFlexibility: values.workFlexibility,
     };
 
     try {
@@ -503,9 +520,33 @@ function TalentRegisterForm({ onBack }: { onBack: () => void }) {
               name="skills"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Skills (comma separated)</FormLabel>
+                  <FormLabel>Skills *</FormLabel>
                   <FormControl>
-                    <Textarea rows={2} placeholder="Solidity, Rust, Tokenomics, Leadership" {...field} />
+                    <MultiSelect
+                      options={SKILLS}
+                      selected={field.value || []}
+                      onChange={field.onChange}
+                      placeholder="Select your skills..."
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={talentForm.control}
+              name="tools"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tools</FormLabel>
+                  <FormControl>
+                    <MultiSelect
+                      options={TOOLS}
+                      selected={field.value || []}
+                      onChange={field.onChange}
+                      placeholder="Select tools you use..."
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -517,10 +558,153 @@ function TalentRegisterForm({ onBack }: { onBack: () => void }) {
               name="languages"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Languages (comma separated)</FormLabel>
+                  <FormLabel>Languages</FormLabel>
                   <FormControl>
-                    <Input placeholder="English, Spanish" {...field} />
+                    <MultiSelect
+                      options={LANGUAGES}
+                      selected={field.value || []}
+                      onChange={field.onChange}
+                      placeholder="Select languages you speak..."
+                    />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Profile Visibility & Job Preferences Section */}
+            <div className="border-t pt-6">
+              <h3 className="text-lg font-semibold text-primary mb-4">Profile Visibility & Job Preferences</h3>
+            </div>
+
+            <FormField
+              control={talentForm.control}
+              name="isPublic"
+              render={({ field }) => (
+                <FormItem className="rounded-lg border p-6 bg-card">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className="rounded-full bg-primary/10 p-2 mt-1">
+                        <Globe className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="space-y-1">
+                        <FormLabel className="text-base font-semibold">Profile Visibility</FormLabel>
+                        <div className="space-y-2">
+                          <p className="text-base font-medium">Make my profile public</p>
+                          <p className="text-sm text-muted-foreground">
+                            Allow companies to discover your profile on the Talents page. Public profiles get access to advanced features and increased visibility.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <FormControl>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={field.value || false}
+                          onChange={field.onChange}
+                          className="sr-only peer"
+                        />
+                        <div className="w-14 h-8 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:start-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary"></div>
+                      </label>
+                    </FormControl>
+                  </div>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={talentForm.control}
+              name="preferredJobTypes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Preferred Job Type</FormLabel>
+                  <div className="grid grid-cols-2 gap-4 mt-2">
+                    {['Full-Time', 'Part-Time', 'Internship', 'Contract'].map((type) => (
+                      <div key={type} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`register-jobType-${type}`}
+                          checked={(field.value || []).includes(type)}
+                          onChange={(e) => {
+                            const current = field.value || [];
+                            if (e.target.checked) {
+                              field.onChange([...current, type]);
+                            } else {
+                              field.onChange(current.filter((t) => t !== type));
+                            }
+                          }}
+                        />
+                        <label htmlFor={`register-jobType-${type}`} className="text-sm">
+                          {type}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={talentForm.control}
+              name="jobAvailability"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Job Availability Type</FormLabel>
+                  <div className="space-y-2 mt-2">
+                    {[
+                      { value: 'actively-looking', label: 'Actively Looking' },
+                      { value: 'open-to-offers', label: 'Open To Offers' },
+                      { value: 'not-available', label: 'Not Available' },
+                    ].map((option) => (
+                      <div key={option.value} className="flex items-center space-x-2">
+                        <input
+                          type="radio"
+                          id={`register-availability-${option.value}`}
+                          value={option.value}
+                          checked={field.value === option.value}
+                          onChange={() => field.onChange(option.value)}
+                        />
+                        <label htmlFor={`register-availability-${option.value}`} className="text-sm">
+                          {option.label}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={talentForm.control}
+              name="workFlexibility"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Work Flexibility</FormLabel>
+                  <div className="flex gap-4 mt-2">
+                    {['Onsite', 'Remote'].map((type) => (
+                      <div key={type} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`register-flexibility-${type}`}
+                          checked={(field.value || []).includes(type)}
+                          onChange={(e) => {
+                            const current = field.value || [];
+                            if (e.target.checked) {
+                              field.onChange([...current, type]);
+                            } else {
+                              field.onChange(current.filter((t) => t !== type));
+                            }
+                          }}
+                        />
+                        <label htmlFor={`register-flexibility-${type}`} className="text-sm">
+                          {type}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}

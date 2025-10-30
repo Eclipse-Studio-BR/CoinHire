@@ -509,6 +509,8 @@ export function registerAuth(app: Express) {
         isOwner: true,
       });
 
+      const now = new Date();
+      const visibilityDays = 30;
       await storage.createJob({
         companyId: company.id,
         title: payload.jobTitle,
@@ -525,12 +527,14 @@ export function registerAuth(app: Express) {
         jobType: 'full_time',
         experienceLevel: 'mid',
         tier: 'normal',
-        status: 'pending',
+        status: 'active',
+        publishedAt: now,
+        expiresAt: new Date(now.getTime() + visibilityDays * 24 * 60 * 60 * 1000),
         externalUrl: payload.applicationMethod === 'external' ? payload.applicationUrl ?? null : null,
         applicationMethod: payload.applicationMethod,
         applicationEmail: payload.applicationMethod === 'email' ? payload.applicationEmail ?? null : null,
         tags: [],
-        visibilityDays: 30,
+        visibilityDays,
       });
 
       await setSessionUser(req, user.id);

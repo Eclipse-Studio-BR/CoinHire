@@ -77,6 +77,7 @@ export const companies = pgTable("companies", {
   remoteWorking: boolean("remote_working").default(false).notNull(),
   isApproved: boolean("is_approved").default(false).notNull(),
   isHiring: boolean("is_hiring").default(true).notNull(),
+  createdByAdmin: boolean("created_by_admin").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
