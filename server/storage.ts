@@ -184,6 +184,10 @@ export class DbStorage implements IStorage {
     return user;
   }
 
+  async deleteUser(id: string): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
+  }
+
   // Companies
   async getCompany(id: string): Promise<Company | undefined> {
     const [company] = await db.select().from(companies).where(eq(companies.id, id));
@@ -874,7 +878,7 @@ export class DbStorage implements IStorage {
   }
 
   async getAdminStats(): Promise<any> {
-    const totalJobs = await db.select({ count: sql<number>`count(*)` }).from(jobs);
+    const totalJobs = await db.select({ count: sql<number>`count(*)` }).from(jobs).where(ne(jobs.status, 'expired'));
     const totalCompanies = await db.select({ count: sql<number>`count(*)` }).from(companies);
     const totalUsers = await db.select({ count: sql<number>`count(*)` }).from(users);
 

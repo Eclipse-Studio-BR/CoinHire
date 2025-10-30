@@ -5,6 +5,7 @@ import { registerAuth, requireAuth, requireRole } from "./auth";
 import { insertJobSchema, insertCompanySchema, insertApplicationSchema, type InsertTalentProfile } from "@shared/schema";
 import { z } from "zod";
 import Stripe from "stripe";
+import bcrypt from "bcrypt";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import "./types";
@@ -29,15 +30,15 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const createCompanySchema = z.object({
   name: z.string().min(1),
   description: z.string().min(1),
-  website: z
-    .string()
-    .url()
-    .optional()
-    .or(z.literal("")),
-  location: z.string().optional().or(z.literal("")),
-  size: z.string().optional().or(z.literal("")),
   logo: z.string().optional().or(z.literal("")),
+  currentSize: z.string().optional().or(z.literal("")),
+  paymentInCrypto: z.boolean().optional(),
+  remoteWorking: z.boolean().optional(),
+  website: z.string().url().optional().or(z.literal("")),
   twitter: z.string().url().optional().or(z.literal("")),
+  discord: z.string().url().optional().or(z.literal("")),
+  telegram: z.string().optional().or(z.literal("")),
+  location: z.string().optional().or(z.literal("")),
 });
 
 const optionalNumericString = () =>
@@ -458,7 +459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update job (employer only)
-  app.put('/api/jobs/:id', requireRole('employer', 'recruiter'), async (req: Request, res: Response) => {
+  app.put('/api/jobs/:id', requireRole('employer', 'recruiter', 'admin'), async (req: Request, res: Response) => {
     try {
       const job = await storage.getJob(req.params.id);
       if (!job) {
@@ -658,12 +659,17 @@ ${company?.name || 'The Team'}`;
     try {
       const parsedData = createCompanySchema.parse(req.body);
       const normalizedData = {
-        ...parsedData,
-        website: parsedData.website || undefined,
-        location: parsedData.location || undefined,
-        size: parsedData.size || undefined,
+        name: parsedData.name,
+        description: parsedData.description,
         logo: parsedData.logo || undefined,
+        currentSize: parsedData.currentSize || undefined,
+        paymentInCrypto: parsedData.paymentInCrypto || false,
+        remoteWorking: parsedData.remoteWorking || false,
+        website: parsedData.website || undefined,
         twitter: parsedData.twitter || undefined,
+        discord: parsedData.discord || undefined,
+        telegram: parsedData.telegram || undefined,
+        location: parsedData.location || undefined,
       };
 
       const user = await storage.getUser(req.session.userId!);
@@ -672,6 +678,36 @@ ${company?.name || 'The Team'}`;
         return res.status(400).json({ error: 'Employers can only create one company' });
       }
 
+      // Check if there's an admin-created company with the same name (case-insensitive)
+      const allCompanies = await storage.listCompanies({});
+      const adminCreatedCompany = allCompanies.find(
+        c => c.createdByAdmin && c.name.toLowerCase() === parsedData.name.toLowerCase()
+      );
+
+      if (adminCreatedCompany) {
+        // Claim the admin-created company
+        console.log(`✅ Employer claiming admin-created company: ${adminCreatedCompany.name}`);
+        
+        // Update the company with employer's provided details
+        const updatedCompany = await storage.updateCompany(adminCreatedCompany.id, {
+          ...normalizedData,
+          createdByAdmin: false, // Now it's claimed by the employer
+          isApproved: true,
+          isHiring: true,
+        });
+
+        // Add the employer as owner
+        await storage.addCompanyMember({
+          companyId: adminCreatedCompany.id,
+          userId: req.session.userId!,
+          isOwner: true,
+        });
+
+        console.log(`✅ Company ${adminCreatedCompany.name} successfully claimed by employer`);
+        return res.status(201).json(updatedCompany);
+      }
+
+      // No matching admin-created company, create new one
       const slug = await generateUniqueCompanySlug(parsedData.name);
 
       const company = await storage.createCompany({
@@ -679,6 +715,7 @@ ${company?.name || 'The Team'}`;
         slug,
         isApproved: true,
         isHiring: true,
+        createdByAdmin: false,
       });
 
       await storage.addCompanyMember({
@@ -694,7 +731,7 @@ ${company?.name || 'The Team'}`;
   });
 
   // Update company (employer only)
-  app.put('/api/companies/:id', requireRole('employer', 'recruiter'), async (req: Request, res: Response) => {
+  app.put('/api/companies/:id', requireRole('employer', 'recruiter', 'admin'), async (req: Request, res: Response) => {
     try {
       // Check ownership: user must be a member of the company or admin
       const isMember = await storage.isCompanyMember(req.session.userId!, req.params.id);
@@ -1355,7 +1392,7 @@ ${company?.name || 'The Team'}`;
     }
   });
 
-  app.put('/api/talent/profile', requireRole('talent'), async (req: Request, res: Response) => {
+  app.put('/api/talent/profile', requireRole('talent', 'admin'), async (req: Request, res: Response) => {
     try {
       const payload = talentProfileUpdateSchema.parse(req.body);
       const updates: Partial<InsertTalentProfile> = {};
@@ -1725,6 +1762,182 @@ ${company?.name || 'The Team'}`;
     }
   });
 
+  // Admin: Create company
+  app.post('/api/admin/companies', requireRole('admin'), async (req: Request, res: Response) => {
+    try {
+      const parsedData = createCompanySchema.parse(req.body);
+      const normalizedData = {
+        name: parsedData.name,
+        description: parsedData.description,
+        logo: parsedData.logo || undefined,
+        currentSize: parsedData.currentSize || undefined,
+        paymentInCrypto: parsedData.paymentInCrypto || false,
+        remoteWorking: parsedData.remoteWorking || false,
+        website: parsedData.website || undefined,
+        twitter: parsedData.twitter || undefined,
+        discord: parsedData.discord || undefined,
+        telegram: parsedData.telegram || undefined,
+        location: parsedData.location || undefined,
+      };
+
+      const slug = await generateUniqueCompanySlug(parsedData.name);
+
+      const company = await storage.createCompany({
+        ...normalizedData,
+        slug,
+        isApproved: true,
+        isHiring: true,
+        createdByAdmin: true,
+      });
+
+      res.status(201).json(company);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Admin: Toggle job featured status
+  app.post('/api/admin/jobs/:id/toggle-featured', requireRole('admin'), async (req: Request, res: Response) => {
+    try {
+      const job = await storage.getJob(req.params.id);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+
+      const now = new Date();
+      let updatedJob;
+
+      if (job.tier === 'featured') {
+        // Unfeature the job
+        updatedJob = await storage.updateJob(req.params.id, {
+          tier: 'normal',
+        });
+        console.log(`✅ Admin unfeatured job ${req.params.id}`);
+      } else {
+        // Feature the job
+        const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+        updatedJob = await storage.updateJob(req.params.id, {
+          tier: 'featured',
+          expiresAt,
+          visibilityDays: 30,
+        });
+        console.log(`✅ Admin featured job ${req.params.id}`);
+      }
+
+      res.json(updatedJob);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin: Create job
+  app.post('/api/admin/jobs', requireRole('admin'), async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertJobSchema.parse(req.body);
+
+      const now = new Date();
+      const visibilityDays = validatedData.visibilityDays ?? 30;
+      
+      const job = await storage.createJob({
+        ...validatedData,
+        status: 'active',
+        tier: 'normal',
+        visibilityDays,
+        publishedAt: now,
+        expiresAt: new Date(now.getTime() + visibilityDays * 24 * 60 * 60 * 1000),
+      });
+
+      res.status(201).json(job);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Admin: Update talent profile
+  app.put('/api/admin/talents/:userId', requireRole('admin'), async (req: Request, res: Response) => {
+    try {
+      const { userId } = req.params;
+      const { 
+        title, story, location, hourlyRate, skills, tools, languages, linkedinUrl, telegram,
+        isPublic, preferredJobTypes, jobAvailability, workFlexibility 
+      } = req.body;
+
+      const updates: Partial<InsertTalentProfile> = {};
+      
+      if (title !== undefined) updates.headline = title;
+      if (story !== undefined) updates.bio = story;
+      if (location !== undefined) updates.location = location;
+      if (hourlyRate !== undefined) updates.hourlyRate = hourlyRate;
+      if (skills !== undefined) updates.skills = skills;
+      if (tools !== undefined) updates.tools = tools;
+      if (languages !== undefined) updates.languages = languages;
+      if (linkedinUrl !== undefined) updates.linkedinUrl = linkedinUrl;
+      if (telegram !== undefined) updates.telegram = telegram;
+      if (isPublic !== undefined) updates.isPublic = isPublic;
+      if (preferredJobTypes !== undefined) updates.preferredJobTypes = preferredJobTypes;
+      if (jobAvailability !== undefined) updates.jobAvailability = jobAvailability;
+      if (workFlexibility !== undefined) updates.workFlexibility = workFlexibility;
+
+      const updatedProfile = await storage.updateTalentProfile(userId, updates);
+      res.json(updatedProfile);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Admin: Create talent profile
+  app.post('/api/admin/talents', requireRole('admin'), async (req: Request, res: Response) => {
+    try {
+      const { 
+        email, firstName, lastName, profileImageUrl, headline, bio, location, 
+        skills, tools, languages, hourlyRate, linkedinUrl, telegram,
+        isPublic, preferredJobTypes, jobAvailability, workFlexibility 
+      } = req.body;
+
+      // Create user account with auto-generated password
+      const autoPassword = `talent_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      const passwordHash = await bcrypt.hash(autoPassword, 10);
+
+      const user = await storage.createUser({
+        email,
+        passwordHash,
+        firstName,
+        lastName,
+        profileImageUrl: profileImageUrl || undefined,
+        role: 'talent',
+      });
+
+      // Create talent profile
+      const profile = await storage.createTalentProfile({
+        userId: user.id,
+        headline: headline || "",
+        bio: bio || "",
+        skills: skills || [],
+        tools: tools || [],
+        languages: languages || [],
+        location: location || "",
+        timezone: "",
+        hourlyRate: hourlyRate ? parseInt(hourlyRate) : null,
+        monthlyRate: null,
+        portfolioUrl: null,
+        githubUrl: null,
+        experience: null,
+        education: null,
+        linkedinUrl: linkedinUrl || null,
+        telegram: telegram || null,
+        resumeUrl: null,
+        isPublic: isPublic !== undefined ? isPublic : true,
+        preferredJobTypes: preferredJobTypes || null,
+        jobAvailability: jobAvailability || null,
+        workFlexibility: workFlexibility || null,
+      });
+
+      res.status(201).json({ user, profile });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   // Get pending companies
   app.get('/api/admin/companies/pending', requireRole('admin'), async (req: Request, res: Response) => {
     try {
@@ -1743,6 +1956,27 @@ ${company?.name || 'The Team'}`;
         return res.status(404).json({ error: 'Company not found' });
       }
       res.json(company);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin: Update user
+  app.put('/api/users/:id', requireRole('admin'), async (req: Request, res: Response) => {
+    try {
+      const updates = req.body;
+      const user = await storage.updateUser(req.params.id, updates);
+      res.json(user);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin: Delete user
+  app.delete('/api/users/:id', requireRole('admin'), async (req: Request, res: Response) => {
+    try {
+      await storage.deleteUser(req.params.id);
+      res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
