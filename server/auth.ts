@@ -344,6 +344,21 @@ const companyRegistrationSchema = z
     jobTitle: z.string().min(2, "Job title is required"),
     companyDescription: z.string().min(20, "Company description is required"),
     jobDescription: z.string().min(20, "Job description is required"),
+    jobRequirements: z
+      .string()
+      .optional()
+      .or(z.literal(""))
+      .transform((value) => (value && value.trim().length ? value.trim() : undefined)),
+    jobBenefits: z
+      .string()
+      .optional()
+      .or(z.literal(""))
+      .transform((value) => (value && value.trim().length ? value.trim() : undefined)),
+    jobSkills: z
+      .string()
+      .optional()
+      .or(z.literal(""))
+      .transform((value) => (value && value.trim().length ? value.trim() : undefined)),
     jobLocation: z.string().min(2, "Job location is required"),
     salaryMin: optionalNumberField(),
     salaryMax: optionalNumberField(),
@@ -511,12 +526,19 @@ export function registerAuth(app: Express) {
 
       const now = new Date();
       const visibilityDays = 30;
+      
+      // Parse skills from comma-separated string to array
+      const jobTags = payload.jobSkills
+        ? payload.jobSkills.split(',').map(skill => skill.trim()).filter(Boolean)
+        : [];
+      
       await storage.createJob({
         companyId: company.id,
         title: payload.jobTitle,
         description: payload.jobDescription,
-        requirements: null,
+        requirements: payload.jobRequirements ?? null,
         responsibilities: null,
+        benefits: payload.jobBenefits ?? null,
         category: null,
         location: payload.jobLocation,
         isRemote: false,
@@ -533,7 +555,7 @@ export function registerAuth(app: Express) {
         externalUrl: payload.applicationMethod === 'external' ? payload.applicationUrl ?? null : null,
         applicationMethod: payload.applicationMethod,
         applicationEmail: payload.applicationMethod === 'email' ? payload.applicationEmail ?? null : null,
-        tags: [],
+        tags: jobTags,
         visibilityDays,
       });
 

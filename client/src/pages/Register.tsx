@@ -21,6 +21,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { TIMEZONES } from "@/lib/timezones";
 import { SKILLS, TOOLS, LANGUAGES } from "@/lib/skillsAndTools";
 import { Check, Building2, UserRound, Globe } from "lucide-react";
+import { RichTextEditor } from "@/components/RichTextEditor";
 
 const passwordSchema = z
   .string()
@@ -93,6 +94,9 @@ const companyFormSchema = z
     telegram: z.string().optional().or(z.literal("")),
     jobTitle: z.string().min(2, "Job title is required"),
     jobDescription: z.string().min(50, "Provide a detailed job description"),
+    jobRequirements: z.string().optional().or(z.literal("")),
+    jobBenefits: z.string().optional().or(z.literal("")),
+    jobSkills: z.string().optional().or(z.literal("")),
     jobLocation: z.string().min(2, "Location is required"),
     salaryMin: z.string().optional().or(z.literal("")),
     salaryMax: z.string().optional().or(z.literal("")),
@@ -773,6 +777,9 @@ function CompanyRegisterForm({ onBack }: { onBack: () => void }) {
       telegram: "",
       jobTitle: "",
       jobDescription: "",
+      jobRequirements: "",
+      jobBenefits: "",
+      jobSkills: "",
       jobLocation: "",
       salaryMin: "",
       salaryMax: "",
@@ -803,6 +810,9 @@ function CompanyRegisterForm({ onBack }: { onBack: () => void }) {
       telegram: values.telegram || undefined,
       jobTitle: values.jobTitle,
       jobDescription: values.jobDescription,
+      jobRequirements: values.jobRequirements || undefined,
+      jobBenefits: values.jobBenefits || undefined,
+      jobSkills: values.jobSkills || undefined,
       jobLocation: values.jobLocation,
       salaryMin: values.salaryMin ? Number(values.salaryMin) : undefined,
       salaryMax: values.salaryMax ? Number(values.salaryMax) : undefined,
@@ -1096,7 +1106,61 @@ function CompanyRegisterForm({ onBack }: { onBack: () => void }) {
                   <FormItem>
                     <FormLabel>Job description</FormLabel>
                     <FormControl>
-                      <Textarea rows={6} placeholder="Describe the role, responsibilities and impact" {...field} />
+                      <RichTextEditor
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Describe the role, responsibilities and impact"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={companyForm.control}
+                name="jobRequirements"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Requirements (Optional)</FormLabel>
+                    <FormControl>
+                      <RichTextEditor
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                        placeholder="Required skills, experience, qualifications..."
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={companyForm.control}
+                name="jobBenefits"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Benefits (Optional)</FormLabel>
+                    <FormControl>
+                      <RichTextEditor
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                        placeholder="Health insurance, 401k, remote work, flexible hours..."
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={companyForm.control}
+                name="jobSkills"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Skills/Tags (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Solidity, React, TypeScript, DeFi (comma-separated)" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

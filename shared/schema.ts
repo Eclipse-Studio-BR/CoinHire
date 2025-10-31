@@ -99,6 +99,7 @@ export const jobs = pgTable("jobs", {
   description: text("description").notNull(),
   requirements: text("requirements"),
   responsibilities: text("responsibilities"),
+  benefits: text("benefits"),
   category: varchar("category", { length: 100 }),
   location: varchar("location", { length: 255 }),
   isRemote: boolean("is_remote").default(false).notNull(),

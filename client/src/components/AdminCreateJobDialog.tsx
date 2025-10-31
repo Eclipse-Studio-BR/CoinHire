@@ -16,13 +16,15 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Company } from "@shared/schema";
 import { JOB_CATEGORIES, JOB_TYPES, EXPERIENCE_LEVELS } from "@/lib/constants";
+import { RichTextEditor } from "@/components/RichTextEditor";
 
-const adminJobSchema = z.object({
+  const adminJobSchema = z.object({
   companyId: z.string().min(1, "Company is required"),
   title: z.string().min(1, "Job title is required"),
   description: z.string().min(1, "Description is required"),
   requirements: z.string().optional(),
   responsibilities: z.string().optional(),
+  benefits: z.string().optional(),
   category: z.string().optional(),
   location: z.string().optional(),
   isRemote: z.boolean().default(false),
@@ -80,6 +82,7 @@ export function AdminCreateJobDialog() {
         description: data.description,
         requirements: data.requirements || undefined,
         responsibilities: data.responsibilities || undefined,
+        benefits: data.benefits || undefined,
         category: data.category || undefined,
         location: data.location || undefined,
         isRemote: data.isRemote,
@@ -100,6 +103,7 @@ export function AdminCreateJobDialog() {
     onSuccess: () => {
       toast({ title: "Job created successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
       setOpen(false);
       form.reset();
     },
@@ -305,10 +309,10 @@ export function AdminCreateJobDialog() {
                 <FormItem>
                   <FormLabel>Description *</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="Job description..." 
-                      className="min-h-[100px]"
-                      {...field} 
+                    <RichTextEditor
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Job description..."
                     />
                   </FormControl>
                   <FormMessage />
@@ -323,10 +327,28 @@ export function AdminCreateJobDialog() {
                 <FormItem>
                   <FormLabel>Requirements</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="Required skills and experience..." 
-                      className="min-h-[80px]"
-                      {...field} 
+                    <RichTextEditor
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                      placeholder="Required skills and experience..."
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="benefits"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Benefits</FormLabel>
+                  <FormControl>
+                    <RichTextEditor
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                      placeholder="Health insurance, stock options, remote work..."
                     />
                   </FormControl>
                   <FormMessage />

@@ -2,6 +2,130 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Quill Rich Text Editor Styles */
+.ql-toolbar {
+  border-top-left-radius: 0.375rem;
+  border-top-right-radius: 0.375rem;
+  border-color: hsl(var(--border));
+  background: hsl(var(--background));
+}
+
+.ql-container {
+  border-bottom-left-radius: 0.375rem;
+  border-bottom-right-radius: 0.375rem;
+  border-color: hsl(var(--border));
+  background: hsl(var(--background));
+  font-family: inherit;
+}
+
+.ql-editor {
+  min-height: 150px;
+  color: hsl(var(--foreground));
+}
+
+.ql-editor.ql-blank::before {
+  color: hsl(var(--muted-foreground));
+}
+
+/* Quill Toolbar Buttons */
+.ql-toolbar button {
+  color: hsl(var(--foreground));
+}
+
+.ql-toolbar button:hover,
+.ql-toolbar button:focus {
+  color: hsl(var(--primary));
+}
+
+.ql-toolbar button.ql-active {
+  color: hsl(var(--primary));
+}
+
+.ql-toolbar .ql-stroke {
+  stroke: hsl(var(--foreground));
+}
+
+.ql-toolbar button:hover .ql-stroke,
+.ql-toolbar button:focus .ql-stroke,
+.ql-toolbar button.ql-active .ql-stroke {
+  stroke: hsl(var(--primary));
+}
+
+.ql-toolbar .ql-fill {
+  fill: hsl(var(--foreground));
+}
+
+.ql-toolbar button:hover .ql-fill,
+.ql-toolbar button:focus .ql-fill,
+.ql-toolbar button.ql-active .ql-fill {
+  fill: hsl(var(--primary));
+}
+
+/* Quill Picker (Dropdowns) */
+.ql-toolbar .ql-picker-label {
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+}
+
+.ql-toolbar .ql-picker-label:hover {
+  color: hsl(var(--primary));
+}
+
+.ql-toolbar .ql-picker-label.ql-active {
+  color: hsl(var(--primary));
+}
+
+.ql-toolbar .ql-picker-options {
+  background: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.375rem;
+  padding: 0.25rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.ql-toolbar .ql-picker-item {
+  color: hsl(var(--foreground));
+}
+
+.ql-toolbar .ql-picker-item:hover {
+  color: hsl(var(--primary));
+  background: hsl(var(--accent));
+}
+
+.ql-toolbar .ql-picker.ql-expanded .ql-picker-label {
+  color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+}
+
+.ql-toolbar .ql-picker.ql-expanded .ql-picker-options {
+  border-color: hsl(var(--primary));
+}
+
+/* Quill Snow Theme Overrides */
+.ql-snow .ql-picker-label::before,
+.ql-snow .ql-picker-item::before {
+  color: hsl(var(--foreground));
+}
+
+.ql-snow .ql-picker-label:hover::before,
+.ql-snow .ql-picker-item:hover::before {
+  color: hsl(var(--primary));
+}
+
+.ql-snow.ql-toolbar button:hover .ql-stroke,
+.ql-snow .ql-toolbar button:hover .ql-stroke,
+.ql-snow.ql-toolbar button.ql-active .ql-stroke,
+.ql-snow .ql-toolbar button.ql-active .ql-stroke {
+  stroke: hsl(var(--primary));
+}
+
+.ql-snow.ql-toolbar button:hover .ql-fill,
+.ql-snow .ql-toolbar button:hover .ql-fill,
+.ql-snow.ql-toolbar button.ql-active .ql-fill,
+.ql-snow .ql-toolbar button.ql-active .ql-fill {
+  fill: hsl(var(--primary));
+}
+
 /* LIGHT MODE */
 :root {
   --button-outline: rgba(0,0,0,.10);

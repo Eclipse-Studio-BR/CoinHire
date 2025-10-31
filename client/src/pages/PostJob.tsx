@@ -25,6 +25,7 @@ import { JOB_CATEGORIES, JOB_TYPES, EXPERIENCE_LEVELS } from "@/lib/constants";
 import { type Company } from "@shared/schema";
 import { Plus } from "lucide-react";
 import { CompanyFormDialog } from "@/components/CompanyFormDialog";
+import { RichTextEditor } from "@/components/RichTextEditor";
 
 export default function PostJob() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
@@ -42,6 +43,7 @@ export default function PostJob() {
     description: '',
     requirements: '',
     responsibilities: '',
+    benefits: '',
     category: '',
     location: '',
     isRemote: false,
@@ -122,6 +124,7 @@ export default function PostJob() {
         description: existingJob.description ?? '',
         requirements: existingJob.requirements ?? '',
         responsibilities: existingJob.responsibilities ?? '',
+        benefits: existingJob.benefits ?? '',
         category: existingJob.category ?? '',
         location: existingJob.location ?? '',
         isRemote: !!existingJob.isRemote,
@@ -152,7 +155,7 @@ export default function PostJob() {
       return response.json();
     },
     onSuccess: (data) => {
-      toast({ title: "Job Posted", description: "Your job has been submitted for review." });
+      toast({ title: "Job Posted", description: "Your job has been published." });
       setLocation(`/jobs/${data.id}`);
     },
     onError: (error: Error) => {
@@ -221,6 +224,7 @@ export default function PostJob() {
       description: formData.description,
       requirements: formData.requirements || undefined,
       responsibilities: formData.responsibilities || undefined,
+      benefits: formData.benefits || undefined,
       category: formData.category || undefined,
       location: formData.location || undefined,
       isRemote: formData.isRemote,
@@ -506,38 +510,37 @@ export default function PostJob() {
 
                 <div>
                   <Label htmlFor="description">Job Description *</Label>
-                  <Textarea
-                    id="description"
+                  <RichTextEditor
                     value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    onChange={(value) => setFormData({ ...formData, description: value })}
                     placeholder="Describe the role, what the candidate will be working on..."
-                    className="min-h-[150px]"
-                    required
-                    data-testid="textarea-description"
                   />
                 </div>
 
                 <div>
                   <Label htmlFor="requirements">Requirements</Label>
-                  <Textarea
-                    id="requirements"
+                  <RichTextEditor
                     value={formData.requirements}
-                    onChange={(e) => setFormData({ ...formData, requirements: e.target.value })}
+                    onChange={(value) => setFormData({ ...formData, requirements: value })}
                     placeholder="Required skills, experience, qualifications..."
-                    className="min-h-[100px]"
-                    data-testid="textarea-requirements"
                   />
                 </div>
 
                 <div>
                   <Label htmlFor="responsibilities">Responsibilities</Label>
-                  <Textarea
-                    id="responsibilities"
+                  <RichTextEditor
                     value={formData.responsibilities}
-                    onChange={(e) => setFormData({ ...formData, responsibilities: e.target.value })}
+                    onChange={(value) => setFormData({ ...formData, responsibilities: value })}
                     placeholder="What will the candidate be responsible for..."
-                    className="min-h-[100px]"
-                    data-testid="textarea-responsibilities"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="benefits">Benefits</Label>
+                  <RichTextEditor
+                    value={formData.benefits}
+                    onChange={(value) => setFormData({ ...formData, benefits: value })}
+                    placeholder="Health insurance, 401k, remote work, flexible hours..."
                   />
                 </div>
 
