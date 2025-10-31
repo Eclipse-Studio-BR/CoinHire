@@ -1,5 +1,6 @@
 import { db } from "./db";
 import { users, companies, jobs, plans } from "@shared/schema";
+import { BASE_PLAN_PRICE_USD_CENTS } from "@shared/pricing";
 import { randomUUID, randomBytes, scryptSync } from "crypto";
 
 function seedPassword(password: string): string {
@@ -287,7 +288,7 @@ async function seed() {
       id: randomUUID(),
       name: "Job Posting - 30 Days",
       tier: "normal" as const,
-      price: 15, // $0.15 (for testing Stripe)
+      price: BASE_PLAN_PRICE_USD_CENTS,
       visibilityDays: 30,
       credits: 1,
       isActive: true,

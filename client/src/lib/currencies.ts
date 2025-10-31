@@ -1,4 +1,5 @@
 // Currency configuration and utilities
+import { BASE_PLAN_PRICE_USD_CENTS } from "@shared/pricing";
 
 export interface CurrencyConfig {
   code: string;
@@ -9,7 +10,7 @@ export interface CurrencyConfig {
 }
 
 // Base price in USD cents
-const BASE_PRICE_USD = 5000; // $50.00
+export const BASE_PRICE_USD = BASE_PLAN_PRICE_USD_CENTS;
 
 export const SUPPORTED_CURRENCIES: Record<string, CurrencyConfig> = {
   USD: {

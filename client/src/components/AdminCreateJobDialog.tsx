@@ -38,6 +38,7 @@ import { RichTextEditor } from "@/components/RichTextEditor";
   applicationMethod: z.enum(["email", "external"]).default("email"),
   applicationEmail: z.string().email().optional(),
   externalUrl: z.string().url().optional().or(z.literal("")),
+  visibilityDays: z.number().int().positive().default(30),
 });
 
 type AdminJobValues = z.infer<typeof adminJobSchema>;
@@ -71,6 +72,7 @@ export function AdminCreateJobDialog() {
       applicationMethod: "email",
       applicationEmail: "",
       externalUrl: "",
+      visibilityDays: 30,
     },
   });
 
@@ -96,6 +98,7 @@ export function AdminCreateJobDialog() {
         applicationEmail: data.applicationMethod === 'email' ? data.applicationEmail : undefined,
         externalUrl: data.applicationMethod === 'external' ? data.externalUrl : undefined,
         tags: data.tags ? data.tags.split(',').map(t => t.trim()).filter(Boolean) : undefined,
+        visibilityDays: data.visibilityDays ?? 30,
       };
       const response = await apiRequest("POST", "/api/admin/jobs", jobData);
       return response.json();

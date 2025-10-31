@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { registerAuth, requireAuth, requireRole } from "./auth";
 import { insertJobSchema, insertCompanySchema, insertApplicationSchema, type InsertTalentProfile } from "@shared/schema";
+import { BASE_PLAN_PRICE_USD_CENTS } from "@shared/pricing";
 import { z } from "zod";
 import Stripe from "stripe";
 import bcrypt from "bcrypt";
@@ -1506,7 +1507,8 @@ ${company?.name || 'The Team'}`;
 
       // Use provided currency or default to USD
       const paymentCurrency = (currency || 'usd').toLowerCase();
-      const paymentAmount = amount || plan.price;
+      const normalizedPlanPrice = plan.price < 100 ? BASE_PLAN_PRICE_USD_CENTS : plan.price;
+      const paymentAmount = amount ?? normalizedPlanPrice;
 
       console.log(`Creating payment intent: ${paymentAmount} ${paymentCurrency}`);
 

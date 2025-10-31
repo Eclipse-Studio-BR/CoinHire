@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Check, CreditCard, Wallet } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { detectUserCurrency, getPriceInCurrency, formatPrice } from "@/lib/currencies";
+import { detectUserCurrency, getPriceInCurrency, formatPrice, BASE_PRICE_USD } from "@/lib/currencies";
 import { CryptoPayment } from "@/components/CryptoPayment";
 import type { Plan } from "@shared/schema";
 
@@ -125,7 +125,7 @@ interface FeatureJobDialogProps {
 export function FeatureJobDialog({ open, onOpenChange, jobId }: FeatureJobDialogProps) {
   const [clientSecret, setClientSecret] = useState("");
   const [userCurrency, setUserCurrency] = useState("USD");
-  const [detectedPrice, setDetectedPrice] = useState(15);
+  const [detectedPrice, setDetectedPrice] = useState(BASE_PRICE_USD);
   const [paymentMethod, setPaymentMethod] = useState<"card" | "crypto">("card");
   const stripePromiseValue = useMemo(() => getStripePromise(), []);
   const { toast } = useToast();

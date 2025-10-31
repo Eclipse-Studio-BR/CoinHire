@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
 import type { Plan } from "@shared/schema";
+import { BASE_PRICE_USD } from "@/lib/currencies";
 
 const features = [
   "Job post is live for 30 days",
@@ -28,6 +29,11 @@ export default function Pricing() {
   });
 
   const activePlan = plans.find(plan => plan.isActive);
+  const priceValue = activePlan ? activePlan.price / 100 : BASE_PRICE_USD / 100;
+  const formattedPrice = priceValue.toLocaleString("en-US", {
+    minimumFractionDigits: priceValue % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -64,7 +70,7 @@ export default function Pricing() {
                 <Card className="p-8 shadow-lg">
                   <div className="text-center mb-6">
                     <div className="flex items-baseline justify-center gap-2 mb-2">
-                      <span className="text-6xl font-bold">$50</span>
+                      <span className="text-6xl font-bold">${formattedPrice}</span>
                       <span className="text-2xl text-muted-foreground">USD</span>
                     </div>
                   </div>

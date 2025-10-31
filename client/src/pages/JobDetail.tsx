@@ -39,6 +39,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { cn } from "@/lib/utils";
+import { RichTextContent } from "@/components/RichTextContent";
 
 type JobWithCompany = Job & { company?: Company };
 
@@ -231,26 +232,32 @@ export default function JobDetail() {
                 <CardContent className="pt-6 space-y-6">
                   <div>
                     <h2 className="text-xl font-semibold mb-3">Description</h2>
-                    <div className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap" data-testid="text-description">
-                      {job.description}
-                    </div>
+                    <RichTextContent
+                      html={job.description}
+                      className="prose prose-sm max-w-none text-muted-foreground prose-headings:text-foreground prose-strong:text-foreground prose-a:text-primary"
+                      data-testid="text-description"
+                    />
                   </div>
 
                   {job.requirements && (
                     <div>
                       <h2 className="text-xl font-semibold mb-3">Requirements</h2>
-                      <div className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap" data-testid="text-requirements">
-                        {job.requirements}
-                      </div>
+                      <RichTextContent
+                        html={job.requirements}
+                        className="prose prose-sm max-w-none text-muted-foreground prose-headings:text-foreground prose-strong:text-foreground prose-a:text-primary"
+                        data-testid="text-requirements"
+                      />
                     </div>
                   )}
 
                   {job.responsibilities && (
                     <div>
                       <h2 className="text-xl font-semibold mb-3">Responsibilities</h2>
-                      <div className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap" data-testid="text-responsibilities">
-                        {job.responsibilities}
-                      </div>
+                      <RichTextContent
+                        html={job.responsibilities}
+                        className="prose prose-sm max-w-none text-muted-foreground prose-headings:text-foreground prose-strong:text-foreground prose-a:text-primary"
+                        data-testid="text-responsibilities"
+                      />
                     </div>
                   )}
 

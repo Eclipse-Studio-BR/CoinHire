@@ -1,7 +1,7 @@
 import { db } from "./db";
 import { plans } from "@shared/schema";
+import { BASE_PLAN_PRICE_USD_CENTS } from "@shared/pricing";
 import { randomUUID } from "crypto";
-import { sql } from "drizzle-orm";
 
 async function updatePlans() {
   console.log("🔄 Updating pricing plans...");
@@ -15,7 +15,7 @@ async function updatePlans() {
     id: randomUUID(),
     name: "Job Posting - 30 Days",
     tier: "normal" as const,
-    price: 15, // $0.15 (for testing Stripe)
+    price: BASE_PLAN_PRICE_USD_CENTS,
     visibilityDays: 30,
     credits: 1,
     isActive: true,

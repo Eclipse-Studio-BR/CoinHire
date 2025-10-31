@@ -94,7 +94,7 @@ export default function Checkout() {
   useEffect(() => {
     if (!planId || !isAuthenticated) return;
 
-    apiRequest("POST", "/api/create-payment-intent", { planId, amount: plan?.price || 0 })
+    apiRequest("POST", "/api/create-payment-intent", { planId })
       .then((res) => res.json())
       .then((data) => {
         setClientSecret(data.clientSecret);
@@ -102,7 +102,7 @@ export default function Checkout() {
       .catch((error) => {
         console.error("Error creating payment intent:", error);
       });
-  }, [planId, plan, isAuthenticated]);
+  }, [planId, isAuthenticated]);
 
   if (!planId) {
     return (
