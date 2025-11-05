@@ -5,22 +5,22 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-smooth focus-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all duration-[180ms] focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_var(--focus-ring)] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground border border-primary-border rounded-pill shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98]",
+          "bg-primary text-primary-foreground border border-primary-border rounded-pill shadow-[var(--shadow-glass-1)] hover:shadow-[var(--shadow-glass-2)] hover:scale-[1.02] active:scale-[0.98]",
         destructive:
-          "bg-destructive text-destructive-foreground border border-destructive-border rounded-pill shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98]",
+          "bg-destructive text-destructive-foreground border border-destructive-border rounded-pill shadow-[var(--shadow-glass-1)] hover:shadow-[var(--shadow-glass-2)] hover:scale-[1.02] active:scale-[0.98]",
         outline:
-          "border [border-color:var(--button-outline)] rounded-pill shadow-xs hover:bg-white/5 active:bg-white/10",
+          "border border-[var(--border-soft)] rounded-pill shadow-[var(--shadow-glass)] hover:bg-white/8 hover:border-[rgba(255,255,255,0.12)] active:bg-white/12",
         secondary:
-          "bg-secondary text-secondary-foreground border border-secondary-border rounded-pill shadow-xs hover:bg-white/5 active:bg-white/10",
+          "bg-[var(--glass-1)] text-foreground border border-[var(--border-soft)] rounded-pill backdrop-blur-md hover:bg-[var(--glass-2)] hover:shadow-[var(--shadow-glass)] active:bg-[var(--glass-3)]",
         ghost:
-          "border border-transparent rounded-xl hover:bg-white/5 active:bg-white/10",
+          "border border-transparent rounded-xl hover:bg-white/6 active:bg-white/10",
         glass:
-          "glass rounded-pill text-foreground shadow-glass hover:shadow-glass-lg hover:scale-[1.02] active:scale-[0.98]",
+          "btn-glass rounded-pill text-foreground hover:scale-[1.02] active:scale-[0.98]",
       },
       size: {
         default: "min-h-10 px-5 py-2.5 text-sm",

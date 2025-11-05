@@ -126,39 +126,60 @@
   fill: hsl(var(--primary));
 }
 
-/* GLASSMORPHISM DARK MODE (Primary) */
+/* BOLT.NEW INSPIRED DARK MODE (Exact Colors) */
 :root {
+  /* ========= CANVAS & SURFACES ========= */
+  --bg-canvas: #0B0F1A;
+  --bg-surface: #0F1424;
+  --border-soft: rgba(255,255,255,0.08);
+  --shadow-tint: rgba(0,0,0,0.45);
+
+  /* ========= TEXT ========= */
+  --text-primary: #FFFFFF;
+  --text-secondary: rgba(255,255,255,0.72);
+
+  /* ========= ACCENTS (Hero Gradient) ========= */
+  --accent-1: #4A7FD6;  /* soft blue */
+  --accent-2: #5B92E5;  /* sky blue */
+  --accent-3: #3D6BB8;  /* deeper blue */
+
+  /* ========= FOCUS & RINGS ========= */
+  --focus-ring: rgba(74,127,214,0.55);
+
   /* ========= GLASSMORPHISM TOKENS ========= */
-  /* Background colors */
-  --bg: 222 47% 6%;
+  /* Background colors (mapped to new canvas) */
+  --bg: 222 47% 6%; /* Keep for HSL compatibility, but use --bg-canvas in practice */
   --bg-elev-1: rgba(255,255,255,0.06);
   --bg-elev-2: rgba(255,255,255,0.10);
 
   /* Glass surfaces */
+  --glass-1: rgba(255,255,255,0.06);
+  --glass-2: rgba(255,255,255,0.08);
+  --glass-3: rgba(255,255,255,0.12);
+  --glass-4: rgba(255,255,255,0.16);
+
+  /* Legacy glass tokens (map to new system) */
   --glass: rgba(255,255,255,0.08);
   --glass-strong: rgba(255,255,255,0.14);
   --glass-border: rgba(255,255,255,0.18);
 
-  /* Input-specific tokens (NO black backgrounds) */
+  /* Input-specific tokens */
   --input-bg: rgba(255,255,255,0.06);
   --input-bg-hover: rgba(255,255,255,0.08);
   --input-bg-focus: rgba(255,255,255,0.10);
-  --stroke: rgba(255,255,255,0.12);
+  --stroke-1: rgba(255,255,255,0.08);
+  --stroke-2: rgba(255,255,255,0.12);
   --stroke-strong: rgba(255,255,255,0.18);
+  --stroke: rgba(255,255,255,0.12);
 
-  /* Text colors */
-  --text: 214 100% 95%;
-  --text-dim: 217 33% 76%;
+  /* Text colors (HSL for compatibility) */
+  --text: 0 0% 100%;
+  --text-dim: 0 0% 72%;
 
-  /* Primary blue */
-  --primary-500: 217 91% 60%;
-  --primary-400: 213 97% 69%;
-  --primary-300: 212 97% 79%;
-
-  /* Blue gradient */
-  --gradient-start: 225 45% 11%;
-  --gradient-mid: 225 45% 20%;
-  --gradient-end: 217 91% 60%;
+  /* Primary colors (derived from accent-1) */
+  --primary-500: 215 60% 56%;  /* #4A7FD6 - soft blue */
+  --primary-400: 215 68% 64%;  /* lighter blue */
+  --primary-300: 215 75% 72%;  /* even lighter blue */
 
   /* Blur effects */
   --blur-sm: 8px;
@@ -172,18 +193,22 @@
   --radius-xl: 24px;
   --radius-pill: 9999px;
 
-  /* Shadows */
-  --shadow-glass: 0 10px 30px rgba(0,0,0,0.35);
-  --shadow-glass-lg: 0 20px 50px rgba(0,0,0,0.45);
+  /* Shadows (updated with --shadow-tint) */
+  --shadow-glass-1: 0 0 0 1px rgba(255,255,255,0.08), 0 8px 20px var(--shadow-tint);
+  --shadow-glass-2: 0 0 0 1px rgba(255,255,255,0.12), inset 0 1px 0 rgba(255,255,255,0.06), 0 12px 28px rgba(0,0,0,0.50);
+  --shadow-glass-3: 0 0 0 1px rgba(255,255,255,0.16), inset 0 1px 0 rgba(255,255,255,0.08), 0 20px 48px rgba(0,0,0,0.60);
+  --shadow-glass: 0 6px 24px -6px var(--shadow-tint);
+  --shadow-glass-lg: 0 20px 50px var(--shadow-tint);
 
-  /* Focus ring */
-  --ring-focus: 0 0 0 2px rgba(59,130,246,0.35);
+  /* Focus ring (updated to use accent-1) */
+  --ring-focus: 0 0 0 2px var(--focus-ring);
 
-  /* Motion */
+  /* Motion (with spring easing) */
   --duration-micro: 120ms;
-  --duration-default: 200ms;
+  --duration-default: 180ms;
   --duration-enter: 320ms;
   --ease-smooth: cubic-bezier(.2,.8,.2,1);
+  --ease-spring: cubic-bezier(.175,.885,.32,1.2);
 
   /* ========= EXISTING TOKENS (Updated for glassmorphism) ========= */
   --button-outline: rgba(255,255,255,.12);
@@ -193,13 +218,13 @@
   --elevate-1: rgba(255,255,255,.05);
   --elevate-2: rgba(255,255,255,.10);
 
-  --background: 222 47% 6%;
-  --foreground: 214 100% 95%;
-  --border: rgba(255,255,255,0.18);
+  --background: 222 47% 5%;  /* Maps to --bg-canvas */
+  --foreground: 0 0% 100%;  /* Maps to --text-primary */
+  --border: var(--border-soft);
 
-  --card: rgba(255,255,255,0.08);
-  --card-foreground: 214 100% 95%;
-  --card-border: rgba(255,255,255,0.18);
+  --card: var(--glass-2);
+  --card-foreground: 0 0% 100%;
+  --card-border: var(--border-soft);
 
   --sidebar: rgba(255,255,255,0.10);
   --sidebar-foreground: 214 100% 95%;
@@ -214,11 +239,11 @@
   --popover-foreground: 214 100% 95%;
   --popover-border: rgba(255,255,255,0.18);
 
-  --primary: 217 91% 60%;
+  --primary: 215 60% 56%;  /* Maps to --accent-1 #4A7FD6 */
   --primary-foreground: 0 0% 100%;
 
   --secondary: rgba(255,255,255,0.10);
-  --secondary-foreground: 214 100% 95%;
+  --secondary-foreground: 0 0% 100%;
 
   --muted: rgba(255,255,255,0.08);
   --muted-foreground: 217 33% 76%;
@@ -294,10 +319,9 @@
     letter-spacing: var(--tracking-normal);
   }
 
-  /* Blue gradient background */
+  /* Dark canvas background (no gradient on body - gradient only on hero) */
   body {
-    background: linear-gradient(135deg, hsl(var(--gradient-start)) 0%, hsl(var(--gradient-mid)) 40%, hsl(var(--gradient-end)) 100%);
-    background-attachment: fixed;
+    background: var(--bg-canvas);
     min-height: 100vh;
   }
 
@@ -376,15 +400,93 @@
     box-shadow: inset 0 -1px rgba(255,255,255,0.06);
   }
 
+  /* Hero background gradient (subtle blue theme with animation) */
+  .hero-bg {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-bg::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(1000px 500px at 25% 15%, rgba(74, 127, 214, 0.35) 0%, transparent 45%),
+      radial-gradient(900px 450px at 75% 25%, rgba(91, 146, 229, 0.28) 0%, transparent 50%),
+      radial-gradient(800px 400px at 50% 75%, rgba(61, 107, 184, 0.25) 0%, transparent 55%),
+      linear-gradient(180deg, rgba(0,0,0,0.00) 0%, rgba(0,0,0,0.45) 100%),
+      var(--bg-canvas);
+    animation: hero-gradient-shift 20s ease-in-out infinite;
+    z-index: -1;
+  }
+
+  @keyframes hero-gradient-shift {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1) translate(0, 0);
+    }
+    50% {
+      opacity: 0.85;
+      transform: scale(1.05) translate(2%, -2%);
+    }
+  }
+
+  /* Glass button (bolt.new inspired) */
+  .btn-glass {
+    color: var(--text-primary);
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.18);
+    backdrop-filter: blur(14px) saturate(120%);
+    -webkit-backdrop-filter: blur(14px) saturate(120%);
+    box-shadow: var(--shadow-glass);
+    transition: backdrop-filter 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  }
+
+  .btn-glass:hover {
+    backdrop-filter: blur(12px) saturate(125%);
+    -webkit-backdrop-filter: blur(12px) saturate(125%);
+    box-shadow: var(--shadow-glass-2);
+  }
+
+  .btn-glass:active {
+    backdrop-filter: blur(10px) saturate(130%);
+    -webkit-backdrop-filter: blur(10px) saturate(130%);
+  }
+
+  .btn-glass:focus-visible {
+    outline: 0;
+    box-shadow: 0 0 0 2px var(--focus-ring);
+  }
+
+  /* Mobile blur performance caps */
+  @media (max-width: 768px) {
+    .btn-glass,
+    .glass,
+    .glass-strong {
+      backdrop-filter: blur(12px) saturate(110%);
+      -webkit-backdrop-filter: blur(12px) saturate(110%);
+    }
+
+    .btn-glass:hover {
+      backdrop-filter: blur(10px) saturate(115%);
+      -webkit-backdrop-filter: blur(10px) saturate(115%);
+    }
+  }
+
   /* Reduce motion */
   @media (prefers-reduced-motion: reduce) {
     .hover-elevate,
-    .transition-smooth {
+    .transition-smooth,
+    .btn-glass {
       transition: none !important;
       animation: none !important;
     }
 
     body::before {
+      animation: none !important;
+    }
+
+    .hero-bg::before {
       animation: none !important;
     }
   }
@@ -398,11 +500,16 @@ stripe-devtools-badge,
 
 @keyframes marquee-slide {
   0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); } 
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 :root {
-  --marquee-duration: 55s; 
+  --marquee-duration: 55s;
 }
 
 @media (min-width: 768px) {
@@ -416,8 +523,13 @@ stripe-devtools-badge,
 
 .group:hover .marquee { animation-play-state: paused; }
 
+.animate-shimmer {
+  animation: shimmer 2s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .marquee { animation: none; transform: none; }
+  .animate-shimmer { animation: none; }
 }
 /* Make any logo image render pure white, regardless of original color */
 .logo-white {

@@ -44,58 +44,47 @@ export default function Landing() {
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <main className="flex-1">
-        {/* ===== Hero (full-color image, bolt style) ===== */}
+        {/* ===== Hero (bolt.new inspired gradient background) ===== */}
         <section
           className="
-            relative overflow-hidden border-b
+            hero-bg
+            relative overflow-hidden border-b border-[var(--border-soft)]
             min-h-[640px] md:min-h-[780px] lg:min-h-[860px]
             flex items-center
           "
         >
-          {/* Full-color background image */}
-          <div className="absolute inset-0 -z-20 bg-[url('/images/hero-image.png')] bg-cover bg-bottom opacity-100" />
 
           <div className="container mx-auto px-4 py-16 md:py-24">
             <div className="mx-auto max-w-4xl text-center">
-              {/* Bolt-style translucent badge, slightly raised */}
+              {/* Glass badge */}
               <Badge
-                variant="secondary"
+                variant="glass"
                 className="
                   relative -top-2 md:-top-4
                   mb-6 inline-flex items-center gap-2 rounded-full
                   px-4 md:px-5 py-1.5 md:py-2 text-sm md:text-base font-medium
-                  bg-background/60 backdrop-blur supports-[backdrop-filter]:bg-background/40
-                  border border-white/10
-                  shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_8px_24px_rgba(0,0,0,0.35)]
-                  text-foreground/90
                 "
               >
                 <Sparkles className="h-4 w-4 opacity-90" />
                 Trusted Web3 &amp; Crypto Jobs
               </Badge>
 
-              {/* Title with gradient on 'Crypto' */}
-              <h1
-                className="text-4xl md:text-6xl font-extrabold tracking-tight leading-tight"
-                style={{ textShadow: "0 1px 2px rgba(0,0,0,.5)" }}
-              >
+              {/* Title with gradient using new accent colors */}
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.1]">
                 <span
                   className="bg-clip-text text-transparent"
                   style={{
                     backgroundImage:
-                      "linear-gradient(90deg, #4F86FF 0%, #7AA2FF 45%, #B8CCFF 100%)",
+                      "linear-gradient(135deg, var(--accent-1) 0%, var(--accent-2) 50%, var(--accent-3) 100%)",
                   }}
                 >
-                  Crypto
+                  Crypto Jobs
                 </span>{" "}
-                Jobs Portal
+                <span className="text-[var(--text-primary)]">Portal</span>
               </h1>
 
               {/* Subtitle */}
-              <p
-                className="mt-3 text-lg md:text-xl text-muted-foreground"
-                style={{ textShadow: "0 1px 1px rgba(0,0,0,.45)" }}
-              >
+              <p className="mt-4 text-lg md:text-xl text-[var(--text-secondary)]">
                 For Talents and Companies
               </p>
             </div>
@@ -105,16 +94,22 @@ export default function Landing() {
               <LandingSearch />
             </div>
 
-            {/* Trust bar — animated carousel, placed further down to avoid crowding */}
-            <div className="mx-auto max-w-6xl text-center mt-24 md:mt-36">
-              <div className="text-[13px] md:text-xs tracking-[0.18em] text-foreground/70">
-                CRYPTO JOBS PORTAL TRUSTED BY
-              </div>
+            {/* Dual CTAs - glass styled */}
+            <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+              <Button size="lg" variant="default" asChild className="min-w-[160px]">
+                <Link href="/jobs">Browse Jobs</Link>
+              </Button>
+              <Button size="lg" variant="secondary" asChild className="min-w-[160px]">
+                <Link href="/post-job">Post a Job</Link>
+              </Button>
+            </div>
 
-              {/* extra space between title and logos */}
-              <div className="mt-8 md:mt-12">
-                <LogoCarousel />
+            {/* Trust bar */}
+            <div className="mx-auto max-w-6xl text-center mt-20 md:mt-28">
+              <div className="text-xs tracking-[0.18em] text-[var(--text-secondary)] uppercase mb-8">
+                Trusted by Leading Web3 Companies
               </div>
+              <LogoCarousel />
             </div>
           </div>
         </section>
