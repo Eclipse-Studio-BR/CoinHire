@@ -6,9 +6,11 @@ export default {
   theme: {
     extend: {
       borderRadius: {
-        lg: ".5625rem", /* 9px */
-        md: ".375rem", /* 6px */
-        sm: ".1875rem", /* 3px */
+        sm: "12px",      /* --radius-sm */
+        DEFAULT: "16px", /* --radius */
+        lg: "20px",      /* --radius-lg */
+        xl: "24px",      /* --radius-xl */
+        pill: "9999px",  /* --radius-pill */
       },
       colors: {
         // Flat / base colors (regular buttons)
@@ -83,8 +85,25 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
-        mono: ["JetBrains Mono", "monospace"],
+        sans: ["Inter", "-apple-system", "SF Pro Text", "system-ui", "sans-serif"],
+        mono: ["SF Mono", "JetBrains Mono", "monospace"],
+      },
+      backdropBlur: {
+        sm: "8px",
+        md: "16px",
+        lg: "24px",
+      },
+      boxShadow: {
+        glass: "0 10px 30px rgba(0,0,0,0.35)",
+        "glass-lg": "0 20px 50px rgba(0,0,0,0.45)",
+      },
+      transitionDuration: {
+        micro: "120ms",
+        DEFAULT: "200ms",
+        enter: "320ms",
+      },
+      transitionTimingFunction: {
+        smooth: "cubic-bezier(.2,.8,.2,1)",
       },
       keyframes: {
         "accordion-down": {
