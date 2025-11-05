@@ -126,199 +126,192 @@
   fill: hsl(var(--primary));
 }
 
-/* LIGHT MODE */
+/* GLASSMORPHISM DARK MODE (Primary) */
 :root {
-  --button-outline: rgba(0,0,0,.10);
-  --badge-outline: rgba(0,0,0,.05);
+  /* ========= GLASSMORPHISM TOKENS ========= */
+  /* Background colors */
+  --bg: 222 47% 6%;
+  --bg-elev-1: rgba(255,255,255,0.06);
+  --bg-elev-2: rgba(255,255,255,0.10);
+
+  /* Glass surfaces */
+  --glass: rgba(255,255,255,0.08);
+  --glass-strong: rgba(255,255,255,0.14);
+  --glass-border: rgba(255,255,255,0.18);
+
+  /* Input-specific tokens (NO black backgrounds) */
+  --input-bg: rgba(255,255,255,0.06);
+  --input-bg-hover: rgba(255,255,255,0.08);
+  --input-bg-focus: rgba(255,255,255,0.10);
+  --stroke: rgba(255,255,255,0.12);
+  --stroke-strong: rgba(255,255,255,0.18);
+
+  /* Text colors */
+  --text: 214 100% 95%;
+  --text-dim: 217 33% 76%;
+
+  /* Primary blue */
+  --primary-500: 217 91% 60%;
+  --primary-400: 213 97% 69%;
+  --primary-300: 212 97% 79%;
+
+  /* Blue gradient */
+  --gradient-start: 225 45% 11%;
+  --gradient-mid: 225 45% 20%;
+  --gradient-end: 217 91% 60%;
+
+  /* Blur effects */
+  --blur-sm: 8px;
+  --blur-md: 16px;
+  --blur-lg: 24px;
+
+  /* Border radius */
+  --radius-sm: 12px;
+  --radius: 16px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --radius-pill: 9999px;
+
+  /* Shadows */
+  --shadow-glass: 0 10px 30px rgba(0,0,0,0.35);
+  --shadow-glass-lg: 0 20px 50px rgba(0,0,0,0.45);
+
+  /* Focus ring */
+  --ring-focus: 0 0 0 2px rgba(59,130,246,0.35);
+
+  /* Motion */
+  --duration-micro: 120ms;
+  --duration-default: 200ms;
+  --duration-enter: 320ms;
+  --ease-smooth: cubic-bezier(.2,.8,.2,1);
+
+  /* ========= EXISTING TOKENS (Updated for glassmorphism) ========= */
+  --button-outline: rgba(255,255,255,.12);
+  --badge-outline: rgba(255,255,255,.08);
 
   /* Interaction overlays */
-  --elevate-1: rgba(0,0,0,.03);
-  --elevate-2: rgba(0,0,0,.08);
+  --elevate-1: rgba(255,255,255,.05);
+  --elevate-2: rgba(255,255,255,.10);
 
-  --background: 0 0% 100%;
-  --foreground: 222 47% 11%;
-  --border: 214 32% 91%;
+  --background: 222 47% 6%;
+  --foreground: 214 100% 95%;
+  --border: rgba(255,255,255,0.18);
 
-  --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
-  --card-border: 214 32% 91%;
+  --card: rgba(255,255,255,0.08);
+  --card-foreground: 214 100% 95%;
+  --card-border: rgba(255,255,255,0.18);
 
-  --sidebar: 240 9% 96%;
-  --sidebar-foreground: 222 47% 11%;
-  --sidebar-border: 214 20% 88%;
+  --sidebar: rgba(255,255,255,0.10);
+  --sidebar-foreground: 214 100% 95%;
+  --sidebar-border: rgba(255,255,255,0.18);
   --sidebar-primary: 217 91% 60%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 217 19% 88%;
-  --sidebar-accent-foreground: 222 47% 11%;
+  --sidebar-accent: rgba(255,255,255,0.08);
+  --sidebar-accent-foreground: 214 100% 95%;
   --sidebar-ring: 217 91% 60%;
 
-  --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
-  --popover-border: 214 32% 91%;
+  --popover: rgba(255,255,255,0.14);
+  --popover-foreground: 214 100% 95%;
+  --popover-border: rgba(255,255,255,0.18);
 
   --primary: 217 91% 60%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 217 19% 90%;
-  --secondary-foreground: 222 47% 11%;
+  --secondary: rgba(255,255,255,0.10);
+  --secondary-foreground: 214 100% 95%;
 
-  --muted: 217 14% 92%;
-  --muted-foreground: 215 16% 47%;
+  --muted: rgba(255,255,255,0.08);
+  --muted-foreground: 217 33% 76%;
 
-  --accent: 217 18% 91%;
-  --accent-foreground: 222 47% 11%;
+  --accent: rgba(255,255,255,0.10);
+  --accent-foreground: 214 100% 95%;
 
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
 
-  --input: 214 32% 85%;
+  --input: rgba(255,255,255,0.10);
   --ring: 217 91% 60%;
 
-  --chart-1: 217 91% 54%;
-  --chart-2: 142 76% 36%;
-  --chart-3: 280 89% 56%;
-  --chart-4: 38 92% 50%;
-  --chart-5: 200 89% 48%;
-
-  --font-sans: Inter, system-ui, sans-serif;
-  --font-mono: JetBrains Mono, monospace;
-
-  --radius: .5rem; /* 8px */
-
-  --shadow-2xs: 0px 2px 0px 0px hsl(222 47% 11% / 0.00);
-  --shadow-xs:  0px 2px 0px 0px hsl(222 47% 11% / 0.00);
-  --shadow-sm:  0px 2px 0px 0px hsl(222 47% 11% / 0.00), 0px 1px 2px -1px hsl(222 47% 11% / 0.00);
-  --shadow:     0px 2px 0px 0px hsl(222 47% 11% / 0.00), 0px 1px 2px -1px hsl(222 47% 11% / 0.00);
-  --shadow-md:  0px 2px 0px 0px hsl(222 47% 11% / 0.00), 0px 2px 4px -1px hsl(222 47% 11% / 0.00);
-  --shadow-lg:  0px 2px 0px 0px hsl(222 47% 11% / 0.00), 0px 4px 6px -1px hsl(222 47% 11% / 0.00);
-  --shadow-xl:  0px 2px 0px 0px hsl(222 47% 11% / 0.00), 0px 8px 10px -1px hsl(222 47% 11% / 0.00);
-  --shadow-2xl: 0px 2px 0px 0px hsl(222 47% 11% / 0.00);
-
-  --tracking-normal: 0em;
-  --spacing: 0.25rem;
-
-  /* ========= Border color computation =========
-   * Replace deprecated/unsupported `hsl(from …)` with color-mix().
-   * We keep the plain hsl() as a fallback and immediately override.
-   * In light mode we darken the color by mixing with black.
-   */
-  --opaque-button-border-abs: 8%;
-  --opaque-button-border-contrast: black;
-
-  /* Fallbacks */
-  --sidebar-primary-border: hsl(var(--sidebar-primary));
-  --sidebar-accent-border:  hsl(var(--sidebar-accent));
-  --primary-border:         hsl(var(--primary));
-  --secondary-border:       hsl(var(--secondary));
-  --muted-border:           hsl(var(--muted));
-  --accent-border:          hsl(var(--accent));
-  --destructive-border:     hsl(var(--destructive));
-
-  /* Overrides with color-mix (widely supported) */
-  --sidebar-primary-border: color-mix(in oklab, hsl(var(--sidebar-primary))  calc(100% - var(--opaque-button-border-abs)), var(--opaque-button-border-contrast) var(--opaque-button-border-abs));
-  --sidebar-accent-border:  color-mix(in oklab, hsl(var(--sidebar-accent))  calc(100% - var(--opaque-button-border-abs)), var(--opaque-button-border-contrast) var(--opaque-button-border-abs));
-  --primary-border:         color-mix(in oklab, hsl(var(--primary))         calc(100% - var(--opaque-button-border-abs)), var(--opaque-button-border-contrast) var(--opaque-button-border-abs));
-  --secondary-border:       color-mix(in oklab, hsl(var(--secondary))       calc(100% - var(--opaque-button-border-abs)), var(--opaque-button-border-contrast) var(--opaque-button-border-abs));
-  --muted-border:           color-mix(in oklab, hsl(var(--muted))           calc(100% - var(--opaque-button-border-abs)), var(--opaque-button-border-contrast) var(--opaque-button-border-abs));
-  --accent-border:          color-mix(in oklab, hsl(var(--accent))          calc(100% - var(--opaque-button-border-abs)), var(--opaque-button-border-contrast) var(--opaque-button-border-abs));
-  --destructive-border:     color-mix(in oklab, hsl(var(--destructive))     calc(100% - var(--opaque-button-border-abs)), var(--opaque-button-border-contrast) var(--opaque-button-border-abs));
-}
-
-.dark {
-  --button-outline: rgba(255,255,255,.10);
-  --badge-outline: rgba(255,255,255,.05);
-
-  /* Interaction overlays */
-  --elevate-1: rgba(255,255,255,.04);
-  --elevate-2: rgba(255,255,255,.09);
-
-  /* ===== bolt.new-style dark with electric blue primary ===== */
-  --background: 223 39% 7%;
-  --foreground: 210 40% 96%;
-  --border: 225 26% 16%;
-
-  --card: 223 39% 9%;
-  --card-foreground: 210 40% 96%;
-  --card-border: 224 28% 13%;
-
-  --sidebar: 221 39% 11%;
-  --sidebar-foreground: 210 40% 96%;
-  --sidebar-border: 220 28% 14%;
-  --sidebar-primary: 228 100% 62%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 223 36% 12%;
-  --sidebar-accent-foreground: 210 40% 96%;
-  --sidebar-ring: 228 100% 62%;
-
-  --popover: 221 36% 14%;
-  --popover-foreground: 210 40% 96%;
-  --popover-border: 223 26% 18%;
-
-  /* Blue primary (buttons/links) */
-  --primary: 228 100% 62%;
-  --primary-foreground: 0 0% 100%;
-
-  --secondary: 222 22% 18%;
-  --secondary-foreground: 210 40% 96%;
-
-  --muted: 222 22% 16%;
-  --muted-foreground: 215 20% 65%;
-
-  --accent: 222 20% 17%;
-  --accent-foreground: 210 40% 96%;
-
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 100%;
-
-  --input: 222 26% 22%;
-  --ring: 228 100% 62%;
-
-  /* Charts tuned to the new primary */
-  --chart-1: 228 100% 60%;
-  --chart-2: 142 60% 45%;
+  --chart-1: 217 91% 60%;
+  --chart-2: 142 60% 50%;
   --chart-3: 280 80% 60%;
   --chart-4: 38 90% 55%;
   --chart-5: 200 80% 55%;
 
-  --shadow-2xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
-  --shadow-xs:  0px 2px 0px 0px hsl(0 0% 0% / 0.00);
-  --shadow-sm:  0px 2px 0px 0px hsl(0 0% 0% / 0.00), 0px 1px 2px -1px hsl(0 0% 0% / 0.00);
-  --shadow:     0px 2px 0px 0px hsl(0 0% 0% / 0.00), 0px 1px 2px -1px hsl(0 0% 0% / 0.00);
-  --shadow-md:  0px 2px 0px 0px hsl(0 0% 0% / 0.00), 0px 2px 4px -1px hsl(0 0% 0% / 0.00);
-  --shadow-lg:  0px 2px 0px 0px hsl(0 0% 0% / 0.00), 0px 4px 6px -1px hsl(0 0% 0% / 0.00);
-  --shadow-xl:  0px 2px 0px 0px hsl(0 0% 0% / 0.00), 0px 8px 10px -1px hsl(0 0% 0% / 0.00);
-  --shadow-2xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
+  --font-sans: Inter, -apple-system, SF Pro Text, system-ui, sans-serif;
+  --font-mono: SF Mono, JetBrains Mono, monospace;
 
-  /* In dark mode we lighten the color by mixing with white */
-  --opaque-button-border-abs: 9%;
+  --radius: 1rem; /* 16px */
+
+  --shadow-2xs: 0px 4px 12px rgba(0,0,0,0.15);
+  --shadow-xs:  0px 6px 16px rgba(0,0,0,0.20);
+  --shadow-sm:  0px 8px 20px rgba(0,0,0,0.25);
+  --shadow:     0px 10px 24px rgba(0,0,0,0.30);
+  --shadow-md:  0px 12px 28px rgba(0,0,0,0.35);
+  --shadow-lg:  0px 16px 36px rgba(0,0,0,0.40);
+  --shadow-xl:  0px 20px 48px rgba(0,0,0,0.45);
+  --shadow-2xl: 0px 28px 64px rgba(0,0,0,0.50);
+
+  --tracking-normal: -0.01em;
+  --spacing: 0.25rem;
+
+  /* Border color computation */
+  --opaque-button-border-abs: 10%;
   --opaque-button-border-contrast: white;
 
   /* Fallbacks */
   --sidebar-primary-border: hsl(var(--sidebar-primary));
-  --sidebar-accent-border:  hsl(var(--sidebar-accent));
+  --sidebar-accent-border:  rgba(255,255,255,0.18);
   --primary-border:         hsl(var(--primary));
-  --secondary-border:       hsl(var(--secondary));
-  --muted-border:           hsl(var(--muted));
-  --accent-border:          hsl(var(--accent));
+  --secondary-border:       rgba(255,255,255,0.18);
+  --muted-border:           rgba(255,255,255,0.18);
+  --accent-border:          rgba(255,255,255,0.18);
   --destructive-border:     hsl(var(--destructive));
 
-  /* Overrides */
+  /* Overrides with color-mix */
   --sidebar-primary-border: color-mix(in oklab, hsl(var(--sidebar-primary))  calc(100% - var(--opaque-button-border-abs)), var(--opaque-button-border-contrast) var(--opaque-button-border-abs));
-  --sidebar-accent-border:  color-mix(in oklab, hsl(var(--sidebar-accent))  calc(100% - var(--opaque-button-border-abs)), var(--opaque-button-border-contrast) var(--opaque-button-border-abs));
   --primary-border:         color-mix(in oklab, hsl(var(--primary))         calc(100% - var(--opaque-button-border-abs)), var(--opaque-button-border-contrast) var(--opaque-button-border-abs));
-  --secondary-border:       color-mix(in oklab, hsl(var(--secondary))       calc(100% - var(--opaque-button-border-abs)), var(--opaque-button-border-contrast) var(--opaque-button-border-abs));
-  --muted-border:           color-mix(in oklab, hsl(var(--muted))           calc(100% - var(--opaque-button-border-abs)), var(--opaque-button-border-contrast) var(--opaque-button-border-abs));
-  --accent-border:          color-mix(in oklab, hsl(var(--accent))          calc(100% - var(--opaque-button-border-abs)), var(--opaque-button-border-contrast) var(--opaque-button-border-abs));
   --destructive-border:     color-mix(in oklab, hsl(var(--destructive))     calc(100% - var(--opaque-button-border-abs)), var(--opaque-button-border-contrast) var(--opaque-button-border-abs));
+}
+
+/* Light mode fallback (optional - we'll keep dark as primary) */
+.light {
+  /* Use same glassmorphism tokens, just inverted */
+  --bg: 0 0% 98%;
+  --background: 0 0% 98%;
+  --foreground: 222 47% 11%;
+  /* ... etc (not needed for dark-first design) */
 }
 
 @layer base {
   * { @apply border-border; }
-  body {
+
+  html, body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    letter-spacing: var(--tracking-normal);
+  }
+
+  /* Blue gradient background */
+  body {
+    background: linear-gradient(135deg, hsl(var(--gradient-start)) 0%, hsl(var(--gradient-mid)) 40%, hsl(var(--gradient-end)) 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  /* Subtle grain texture */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.03;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='3.5' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
   }
 
   .prose :where(h1, h2, h3, h4, h5, h6, strong, b) {
@@ -327,6 +320,73 @@
 
   .prose :where(a) {
     color: hsl(var(--primary));
+  }
+}
+
+/* ========= GLASSMORPHISM UTILITIES ========= */
+@layer utilities {
+  /* Glass card effect */
+  .glass {
+    background: var(--glass);
+    backdrop-filter: blur(var(--blur-md));
+    -webkit-backdrop-filter: blur(var(--blur-md));
+    border: 1px solid var(--stroke);
+  }
+
+  .glass-strong {
+    background: var(--glass-strong);
+    backdrop-filter: blur(var(--blur-lg));
+    -webkit-backdrop-filter: blur(var(--blur-lg));
+    border: 1px solid var(--stroke-strong);
+  }
+
+  /* Smooth transitions */
+  .transition-smooth {
+    transition-timing-function: var(--ease-smooth);
+    transition-duration: var(--duration-default);
+  }
+
+  /* Focus ring */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-0;
+  }
+
+  /* Hover elevate */
+  .hover-elevate {
+    transition: all var(--duration-default) var(--ease-smooth);
+  }
+
+  .hover-elevate:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-glass);
+  }
+
+  /* Soft dividers (no hard white lines) */
+  .divider-gradient {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  }
+
+  .divider-alpha {
+    box-shadow: inset 0 -1px rgba(255,255,255,0.06);
+  }
+
+  /* Table row separator (no borders) */
+  .table-row-separator {
+    box-shadow: inset 0 -1px rgba(255,255,255,0.06);
+  }
+
+  /* Reduce motion */
+  @media (prefers-reduced-motion: reduce) {
+    .hover-elevate,
+    .transition-smooth {
+      transition: none !important;
+      animation: none !important;
+    }
+
+    body::before {
+      animation: none !important;
+    }
   }
 }
 
